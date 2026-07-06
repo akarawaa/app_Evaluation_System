@@ -4,23 +4,24 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 0 (Project & Repo Setup)
+**สเต็ปที่กำลังทำ:** Step 2 เสร็จ (schema+RLS เขียนแล้ว, ยังไม่รันจริง) → ถัดไป Step 1 รัน migration + Step 3
 
 ---
 
 ## ✅ ทำไปแล้ว
 - อ่าน/วิเคราะห์ใบประเมินเดิม FMHR07 → `docs/evaluation-form-analysis.md`
-- วิเคราะห์ช่องโหว่ PROJECT_PLAN.md (multi-tenant) — สรุปในบทสนทนาและสะท้อนใน SECURITY.md
-- ตัดสินใจสถาปัตยกรรมหลัก (ดู "การตัดสินใจที่ล็อกแล้ว")
-- `git init`
-- สร้างเอกสารควบคุมงาน: README, CLAUDE.md, ARCHITECTURE, DATABASE_SCHEMA, SECURITY (OWASP), LOGGING_AND_AUDIT, PHASE_1_PLAN, PROJECT_STATUS
-- สร้าง .gitignore
+- วิเคราะห์ช่องโหว่ PROJECT_PLAN.md (multi-tenant) → สะท้อนใน SECURITY.md
+- ตัดสินใจสถาปัตยกรรมหลัก + tooling (ดู "การตัดสินใจที่ล็อกแล้ว")
+- `git init` + commit แรก (เอกสารควบคุมงานครบ)
+- **โครงโฟลเดอร์:** `backend/` (FastAPI: app/core/api/services/repositories/schemas + config + main + requirements + .env.example), `frontend/` (package.json + .env.example), `supabase/`
+- **SQL migrations (เขียนแล้ว ยังไม่รัน):** `supabase/migrations/0001–0006` — extensions, auth helpers (JWT claim readers), tenant+identity schema (FK/CHECK/index), criteria (BARS), audit_logs, **RLS policies ครบทุกตาราง**
+- **Seed:** `supabase/seed.sql` — role catalog + master template FMHR07 (operational 28 ข้อ, supervisor 42 ข้อ; desc_1..5 เว้นให้ HR เติม)
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. ตอบคำถามค้าง (ด้านล่าง) — Supabase local/cloud, DB access lib, package manager
-2. สร้างโครงโฟลเดอร์ `backend/` + `frontend/` + `.env.example`
-3. Commit แรก
-4. เริ่ม Step 1–2 (Supabase + tenant schema + RLS) ตาม `docs/PHASE_1_PLAN.md`
+1. **รัน migration จริง** — `supabase init` → `supabase start` → `supabase db reset` (ยังไม่ได้ทดสอบว่ารันผ่าน ต้องมี Docker/Supabase CLI ในเครื่อง)
+2. Step 3 — Custom Access Token Hook ฝัง `company_id`/`is_super_admin`/`roles` ลง JWT
+3. Step 5 — ต่อ FastAPI: JWT verify + tenant guard + request_id/logging middleware + audit helper + security headers
+4. Step 8 — negative test ข้าม tenant (สำคัญ: ต้องพิสูจน์ว่า RLS กันจริง)
 
 ## 🔒 การตัดสินใจที่ล็อกแล้ว (อย่าเปลี่ยนโดยไม่คุย)
 | หัวข้อ | ค่าที่เลือก |
@@ -33,12 +34,13 @@
 | Login Phase 1 (default) | HR/Admin + หัวหน้า ก่อน (พนักงานทั่วไปเป็น record) |
 | Security | OWASP Top 10 by design (docs/SECURITY.md) |
 | Audit | append-only audit_logs + structured app logs (docs/LOGGING_AND_AUDIT.md) |
+| Supabase env | Local (CLI/Docker) สำหรับ dev + Cloud แยกสำหรับ staging/prod |
+| DB access | SQLAlchemy + asyncpg (async) + supabase-py เฉพาะ Auth admin |
+| Frontend pkg manager | npm |
 
-## ❓ คำถามค้าง (รอผู้ใช้ยืนยัน — ไม่บล็อกงานเอกสาร)
-- Supabase: cloud project หรือ local (CLI/Docker)?
-- DB access: SQLAlchemy+asyncpg หรือ supabase-py?
-- Frontend package manager: npm หรือ pnpm?
-- Criteria scope ต่อ tenant, login scope, role set — เคยเสนอ default ไว้ ถ้าไม่ค้านจะใช้ตามนั้น
+## ❓ คำถามค้าง (รอผู้ใช้ยืนยัน — ไม่บล็อกงาน)
+- Supabase local หรือ cloud สำหรับรันจริงรอบแรก? (ผมออกแบบให้ local ก่อน)
+- Criteria scope ต่อ tenant, login scope, role set — ใช้ default ที่เสนอไว้ (แก้ได้)
 
 ## 🧭 จุดอ้างอิงเร็ว
 - แผนละเอียด: `docs/PHASE_1_PLAN.md`

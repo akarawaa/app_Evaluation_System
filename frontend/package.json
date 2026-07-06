@@ -1,0 +1,27 @@
+{
+  "name": "e-appraisal-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-router-dom": "^6",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3",
+    "typescript": "^5",
+    "vite": "^5"
+  }
+}

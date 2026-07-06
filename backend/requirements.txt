@@ -1,0 +1,26 @@
+# FastAPI stack
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# DB access (primary): SQLAlchemy async + asyncpg
+sqlalchemy[asyncio]
+asyncpg
+
+# Supabase (used for Auth admin tasks only, e.g. inviting/creating users)
+supabase
+
+# Auth / JWT verification
+pyjwt[crypto]
+python-jose[cryptography]
+
+# Logging
+structlog
+
+# Dev / test
+pytest
+pytest-asyncio
+httpx
+pip-audit
+ruff
