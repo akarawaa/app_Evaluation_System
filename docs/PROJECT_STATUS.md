@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 1–2 เสร็จ + รัน migration จริงผ่าน + RLS พิสูจน์แล้ว (Step 8 บางส่วน) → ถัดไป Step 3
+**สเต็ปที่กำลังทำ:** Step 1–3 เสร็จ + พิสูจน์จริงบน local (RLS + Auth Hook) → ถัดไป Step 5 (FastAPI)
 
 ---
 
@@ -18,12 +18,12 @@
 - **Seed:** `supabase/seed.sql` — role catalog + master template FMHR07 (operational 28 ข้อ, supervisor 42 ข้อ; desc_1..5 เว้นให้ HR เติม)
 - **รัน migration จริงผ่านแล้ว** บน Supabase local (Docker) — `supabase init` + `supabase start` (ปิด `[analytics]` ใน config.toml เพราะ container นี้ล้มบน Windows)
 - **RLS ยืนยันด้วย negative test 7 เคส ผ่านหมด** → `supabase/tests/rls_negative_test.sql` (บริษัท A เห็น/แก้ข้อมูลบริษัท B ไม่ได้, master template แชร์ได้, audit ลบไม่ได้)
+- **Step 3 Auth Hook เสร็จ+พิสูจน์แล้ว** → `supabase/migrations/0007_auth_hook.sql` (SECURITY DEFINER, ฝัง company_id/is_super_admin/roles), เปิดใน `config.toml` `[auth.hook.custom_access_token]`. JWT จริงจากการ login มี claims ครบ → `supabase/tests/test_auth_hook.sh`
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. Step 3 — Custom Access Token Hook ฝัง `company_id`/`is_super_admin`/`roles` ลง JWT (ตอนนี้ทดสอบด้วยการ set claim เองใน test แล้วได้ผล ต้องทำ hook จริงให้ Supabase Auth ออก claim นี้อัตโนมัติ)
-2. Step 5 — ต่อ FastAPI: JWT verify + tenant guard + repository ตั้ง `request.jwt.claims` ต่อ session + request_id/logging middleware + audit helper + security headers
-3. Step 6/7 — provisioning/RBAC API + React skeleton
-4. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ตอนมี API
+1. Step 5 — ต่อ FastAPI: verify JWT (secret จาก Supabase) + tenant guard + repository ตั้ง `request.jwt.claims` ต่อ session ให้ RLS ทำงาน + request_id/logging middleware + audit helper + security headers
+2. Step 6/7 — provisioning/RBAC API (super_admin สร้าง tenant + hr_admin + clone template) + React skeleton (login flow)
+3. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ตอนมี API
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
