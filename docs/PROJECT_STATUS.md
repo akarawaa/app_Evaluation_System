@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 2 เสร็จ (schema+RLS เขียนแล้ว, ยังไม่รันจริง) → ถัดไป Step 1 รัน migration + Step 3
+**สเต็ปที่กำลังทำ:** Step 1–2 เสร็จ + รัน migration จริงผ่าน + RLS พิสูจน์แล้ว (Step 8 บางส่วน) → ถัดไป Step 3
 
 ---
 
@@ -16,12 +16,22 @@
 - **โครงโฟลเดอร์:** `backend/` (FastAPI: app/core/api/services/repositories/schemas + config + main + requirements + .env.example), `frontend/` (package.json + .env.example), `supabase/`
 - **SQL migrations (เขียนแล้ว ยังไม่รัน):** `supabase/migrations/0001–0006` — extensions, auth helpers (JWT claim readers), tenant+identity schema (FK/CHECK/index), criteria (BARS), audit_logs, **RLS policies ครบทุกตาราง**
 - **Seed:** `supabase/seed.sql` — role catalog + master template FMHR07 (operational 28 ข้อ, supervisor 42 ข้อ; desc_1..5 เว้นให้ HR เติม)
+- **รัน migration จริงผ่านแล้ว** บน Supabase local (Docker) — `supabase init` + `supabase start` (ปิด `[analytics]` ใน config.toml เพราะ container นี้ล้มบน Windows)
+- **RLS ยืนยันด้วย negative test 7 เคส ผ่านหมด** → `supabase/tests/rls_negative_test.sql` (บริษัท A เห็น/แก้ข้อมูลบริษัท B ไม่ได้, master template แชร์ได้, audit ลบไม่ได้)
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. **รัน migration จริง** — `supabase init` → `supabase start` → `supabase db reset` (ยังไม่ได้ทดสอบว่ารันผ่าน ต้องมี Docker/Supabase CLI ในเครื่อง)
-2. Step 3 — Custom Access Token Hook ฝัง `company_id`/`is_super_admin`/`roles` ลง JWT
-3. Step 5 — ต่อ FastAPI: JWT verify + tenant guard + request_id/logging middleware + audit helper + security headers
-4. Step 8 — negative test ข้าม tenant (สำคัญ: ต้องพิสูจน์ว่า RLS กันจริง)
+1. Step 3 — Custom Access Token Hook ฝัง `company_id`/`is_super_admin`/`roles` ลง JWT (ตอนนี้ทดสอบด้วยการ set claim เองใน test แล้วได้ผล ต้องทำ hook จริงให้ Supabase Auth ออก claim นี้อัตโนมัติ)
+2. Step 5 — ต่อ FastAPI: JWT verify + tenant guard + repository ตั้ง `request.jwt.claims` ต่อ session + request_id/logging middleware + audit helper + security headers
+3. Step 6/7 — provisioning/RBAC API + React skeleton
+4. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ตอนมี API
+
+## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
+```
+npx supabase start          # Postgres @54322, API @54321, Studio @54323
+# รัน RLS test:
+cat supabase/tests/rls_negative_test.sql | docker exec -i supabase_db_app_Evaluation_System psql -U postgres -d postgres -v ON_ERROR_STOP=1
+npx supabase stop           # ตอนเลิกงาน
+```
 
 ## 🔒 การตัดสินใจที่ล็อกแล้ว (อย่าเปลี่ยนโดยไม่คุย)
 | หัวข้อ | ค่าที่เลือก |
