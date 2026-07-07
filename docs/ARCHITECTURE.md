@@ -31,7 +31,7 @@
 - **กำแพงกันข้อมูลข้าม tenant (ป้องกันซ้อนชั้น / defense in depth):**
   1. **RLS (ชั้นล่างสุด, สำคัญที่สุด):** ทุกตาราง tenant-scoped มี policy `company_id = auth.jwt() ->> 'company_id'`
   2. **App layer:** FastAPI dependency ตรวจ tenant ทุก request (ไม่พึ่ง client ส่ง company_id มา)
-  3. **JWT claim:** `company_id` ถูกฝังใน JWT ผ่าน Supabase Auth Hook (custom claims) → ปลอมจากฝั่ง client ไม่ได้เพราะ JWT เซ็นด้วย secret ของ Supabase
+  3. **JWT claim:** `company_id` ถูกฝังใน JWT ผ่าน Supabase Auth Hook (custom claims) → ปลอมจากฝั่ง client ไม่ได้เพราะ JWT เซ็นด้วย **private key ES256 ของ Supabase** (backend verify ผ่าน JWKS: `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`)
 
 ## 3. Identity & Access
 - **Authentication:** Supabase Auth (email/password, ขยายเป็น OAuth/MFA ได้)

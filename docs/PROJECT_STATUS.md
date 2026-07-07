@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 1–3 เสร็จ + พิสูจน์จริงบน local (RLS + Auth Hook) → ถัดไป Step 5 (FastAPI)
+**สเต็ปที่กำลังทำ:** Step 1–3 + Step 5 เสร็จ + พิสูจน์จริงบน local (RLS · Auth Hook · FastAPI API) → ถัดไป Step 6/7
 
 ---
 
@@ -19,17 +19,24 @@
 - **รัน migration จริงผ่านแล้ว** บน Supabase local (Docker) — `supabase init` + `supabase start` (ปิด `[analytics]` ใน config.toml เพราะ container นี้ล้มบน Windows)
 - **RLS ยืนยันด้วย negative test 7 เคส ผ่านหมด** → `supabase/tests/rls_negative_test.sql` (บริษัท A เห็น/แก้ข้อมูลบริษัท B ไม่ได้, master template แชร์ได้, audit ลบไม่ได้)
 - **Step 3 Auth Hook เสร็จ+พิสูจน์แล้ว** → `supabase/migrations/0007_auth_hook.sql` (SECURITY DEFINER, ฝัง company_id/is_super_admin/roles), เปิดใน `config.toml` `[auth.hook.custom_access_token]`. JWT จริงจากการ login มี claims ครบ → `supabase/tests/test_auth_hook.sh`
+- **Step 5 FastAPI เสร็จ+พิสูจน์แล้ว** → `backend/app/` (core: config/logging/security/db/middleware · api/routes · services/audit · schemas/branch). JWT verify ผ่าน **JWKS/ES256**, `get_tenant_session` ตั้ง `request.jwt.claims` + `set local role authenticated` ต่อ request ให้ RLS ทำงานผ่าน API, middleware request_id + structured log + security headers, audit เขียนใน transaction เดียวกับ mutation, RBAC ผ่าน `require_roles`. **API test 7/7 ผ่าน** → `backend/tests/test_api.sh`
+- **ข้อค้นพบสำคัญ:** Supabase CLI ใหม่เซ็น access token ด้วย **ES256 + JWKS** (ไม่ใช่ HS256 secret) → verify ต้องดึง public key จาก `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`; ต้องมี `cryptography`. Python 3.9 บนเครื่องนี้ต้อง pin `greenlet==3.1.1` (ไม่มี wheel cp39 รุ่นใหม่ + ไม่มี MSVC)
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. Step 5 — ต่อ FastAPI: verify JWT (secret จาก Supabase) + tenant guard + repository ตั้ง `request.jwt.claims` ต่อ session ให้ RLS ทำงาน + request_id/logging middleware + audit helper + security headers
-2. Step 6/7 — provisioning/RBAC API (super_admin สร้าง tenant + hr_admin + clone template) + React skeleton (login flow)
-3. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ตอนมี API
+1. Step 6 — provisioning/RBAC API (super_admin สร้าง tenant + hr_admin แรก + clone criteria template จาก master) ผ่าน supabase-py (Auth admin) — ทุก mutation ต้องมี audit
+2. Step 7 — React skeleton (login flow ด้วย @supabase/supabase-js + protected routes + role-based layout)
+3. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ใหม่
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
 npx supabase start          # Postgres @54322, API @54321, Studio @54323
-# รัน RLS test:
+# รัน RLS test (DB layer):
 cat supabase/tests/rls_negative_test.sql | docker exec -i supabase_db_app_Evaluation_System psql -U postgres -d postgres -v ON_ERROR_STOP=1
+# รัน backend API:
+cd backend && cp .env.example .env   # (ค่า local ใช้ได้เลย; SUPABASE_URL=http://localhost:54321)
+py -3.9 -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt   # ถ้า greenlet build ล้ม: pip install greenlet==3.1.1 ก่อน
+.venv/Scripts/python -m uvicorn app.main:app --port 8000
+# รัน API test 7/7 (อีก terminal): bash backend/tests/test_api.sh
 npx supabase stop           # ตอนเลิกงาน
 ```
 
