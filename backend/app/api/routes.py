@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_tenant_session
 from app.core.security import CurrentUser, get_current_user, require_roles
 from app.schemas.branch import BranchCreate, BranchOut
+from app.schemas.employee import EmployeeCreate, EmployeeOut
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api")
@@ -34,6 +35,42 @@ async def list_employees(session: AsyncSession = Depends(get_tenant_session)) ->
         )
     ).mappings().all()
     return [dict(r) for r in rows]
+
+
+@router.post("/employees", response_model=EmployeeOut, status_code=status.HTTP_201_CREATED)
+async def create_employee(
+    payload: EmployeeCreate,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    row = (
+        await session.execute(
+            text(
+                "insert into employees "
+                "(company_id, branch_id, emp_code, full_name, position, level) "
+                "values (:cid, :branch_id, :emp_code, :full_name, :position, :level) "
+                "returning id, emp_code, full_name, level, status"
+            ),
+            {
+                "cid": user.company_id,
+                "branch_id": str(payload.branch_id) if payload.branch_id else None,
+                "emp_code": payload.emp_code,
+                "full_name": payload.full_name,
+                "position": payload.position,
+                "level": payload.level,
+            },
+        )
+    ).mappings().one()
+    await write_audit(
+        session,
+        company_id=user.company_id,
+        actor_id=user.id,
+        action="create",
+        entity_type="employees",
+        entity_id=row["id"],
+        after=dict(row),
+    )
+    return dict(row)
 
 
 @router.get("/branches", response_model=list[BranchOut])

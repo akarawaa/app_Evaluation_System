@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 1–3 + Step 5 เสร็จ + พิสูจน์จริงบน local (RLS · Auth Hook · FastAPI API) → ถัดไป Step 6/7
+**สเต็ปที่กำลังทำ:** Step 1–7 เสร็จ + พิสูจน์จริงบน local ครบวง (RLS · Auth Hook · FastAPI · Provisioning · React login→dashboard) → **Phase 1 core เสร็จ**, เหลือ hardening/Step 8 เพิ่มเติม
 
 ---
 
@@ -21,11 +21,14 @@
 - **Step 3 Auth Hook เสร็จ+พิสูจน์แล้ว** → `supabase/migrations/0007_auth_hook.sql` (SECURITY DEFINER, ฝัง company_id/is_super_admin/roles), เปิดใน `config.toml` `[auth.hook.custom_access_token]`. JWT จริงจากการ login มี claims ครบ → `supabase/tests/test_auth_hook.sh`
 - **Step 5 FastAPI เสร็จ+พิสูจน์แล้ว** → `backend/app/` (core: config/logging/security/db/middleware · api/routes · services/audit · schemas/branch). JWT verify ผ่าน **JWKS/ES256**, `get_tenant_session` ตั้ง `request.jwt.claims` + `set local role authenticated` ต่อ request ให้ RLS ทำงานผ่าน API, middleware request_id + structured log + security headers, audit เขียนใน transaction เดียวกับ mutation, RBAC ผ่าน `require_roles`. **API test 7/7 ผ่าน** → `backend/tests/test_api.sh`
 - **ข้อค้นพบสำคัญ:** Supabase CLI ใหม่เซ็น access token ด้วย **ES256 + JWKS** (ไม่ใช่ HS256 secret) → verify ต้องดึง public key จาก `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`; ต้องมี `cryptography`. Python 3.9 บนเครื่องนี้ต้อง pin `greenlet==3.1.1` (ไม่มี wheel cp39 รุ่นใหม่ + ไม่มี MSVC)
+- **Step 6 Provisioning เสร็จ+พิสูจน์แล้ว** → `0008_platform_tenant.sql` (platform tenant ที่อยู่ super_admin), `0009_clone_templates.sql` (ฟังก์ชัน clone master→tenant, self-guard super_admin), `backend/app/api/admin.py` (POST /api/admin/tenants: สร้าง company + clone 2 template/70 items + สร้าง hr_admin ผ่าน GoTrue admin API + audit), `POST /api/employees` (hr_admin). **test 7/7** → `backend/tests/test_provisioning.sh`
+- **Step 7 React เสร็จ+พิสูจน์แล้ว** → `frontend/` (Vite+React+TS+Tailwind): AuthContext (supabase-js), ProtectedRoute, Login, Dashboard (เรียก /api/me + /api/employees). `npm run build` ผ่าน; login จริงใน browser → Dashboard แสดง claims + พนักงาน scope ตาม tenant. `.claude/launch.json` = preview config (`npm --prefix frontend run dev`)
 
-## 🔜 ทำต่อ (ถัดไป)
-1. Step 6 — provisioning/RBAC API (super_admin สร้าง tenant + hr_admin แรก + clone criteria template จาก master) ผ่าน supabase-py (Auth admin) — ทุก mutation ต้องมี audit
-2. Step 7 — React skeleton (login flow ด้วย @supabase/supabase-js + protected routes + role-based layout)
-3. Step 8 (เพิ่ม) — ครอบ negative test ทุก endpoint ใหม่
+## 🔜 ทำต่อ (ถัดไป — Phase 1 hardening / Phase 2)
+1. **npm audit:** frontend มี 2 ช่องโหว่ (1 moderate/1 high, dev deps) — รัน `npm audit` แล้วอัปเดต
+2. Step 8 hardening — negative test อัตโนมัติครอบทุก endpoint (cross-tenant) + `pip-audit`
+3. UI จัดการ (สร้าง branch/employee จากหน้าเว็บ), invite user flow
+4. Phase 2 — Evaluation UI (BARS scoring) + approval workflow (5 ระดับ), เติม `desc_1..5` (BARS anchors) จริง, สูตรคะแนน attendance (เต็ม 40) จาก HR
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
