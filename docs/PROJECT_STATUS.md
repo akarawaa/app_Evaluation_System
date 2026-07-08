@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 1–7 เสร็จ + พิสูจน์จริงบน local ครบวง (RLS · Auth Hook · FastAPI · Provisioning · React login→dashboard) → **Phase 1 core เสร็จ**, เหลือ hardening/Step 8 เพิ่มเติม
+**สเต็ปที่กำลังทำ:** Step 1–8 เสร็จ + พิสูจน์จริงบน local ครบวง (RLS · Auth Hook · FastAPI · Provisioning · React · security suite) → **Phase 1 เสร็จ** พร้อมขึ้น Phase 2
 
 ---
 
@@ -23,12 +23,15 @@
 - **ข้อค้นพบสำคัญ:** Supabase CLI ใหม่เซ็น access token ด้วย **ES256 + JWKS** (ไม่ใช่ HS256 secret) → verify ต้องดึง public key จาก `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`; ต้องมี `cryptography`. Python 3.9 บนเครื่องนี้ต้อง pin `greenlet==3.1.1` (ไม่มี wheel cp39 รุ่นใหม่ + ไม่มี MSVC)
 - **Step 6 Provisioning เสร็จ+พิสูจน์แล้ว** → `0008_platform_tenant.sql` (platform tenant ที่อยู่ super_admin), `0009_clone_templates.sql` (ฟังก์ชัน clone master→tenant, self-guard super_admin), `backend/app/api/admin.py` (POST /api/admin/tenants: สร้าง company + clone 2 template/70 items + สร้าง hr_admin ผ่าน GoTrue admin API + audit), `POST /api/employees` (hr_admin). **test 7/7** → `backend/tests/test_provisioning.sh`
 - **Step 7 React เสร็จ+พิสูจน์แล้ว** → `frontend/` (Vite+React+TS+Tailwind): AuthContext (supabase-js), ProtectedRoute, Login, Dashboard (เรียก /api/me + /api/employees). `npm run build` ผ่าน; login จริงใน browser → Dashboard แสดง claims + พนักงาน scope ตาม tenant. `.claude/launch.json` = preview config (`npm --prefix frontend run dev`)
+- **Step 8 Hardening เสร็จ** →
+  - **pytest security suite 15/15 ผ่าน** → `backend/tests/test_security_isolation.py` + `conftest.py` (fixtures: 2 tenants + hr/employee/super_admin ผ่าน GoTrue admin API, cleanup ด้วย asyncpg). ครอบ: ทุก endpoint ต้องมี auth (401), tenant isolation ของ read/write ทุก endpoint, RBAC (403), super_admin provisioning + clone, security headers, invalid token. รัน: `cd backend && .venv/Scripts/python -m pytest`
+  - **npm audit:** อัป vite→8.1.3 + plugin-react→6.0.3 → **0 vulnerabilities** (build ยังผ่าน)
+  - **pip-audit:** รันแล้ว — ส่วนใหญ่เป็น dev tooling (pip/setuptools/pytest/filelock/msgpack/requests). runtime (starlette/urllib3) ติดตั้งเวอร์ชันล่าสุดที่มีแล้ว fix version ยังไม่ปล่อย = **no-fix-available, track ไว้** (ทบทวนเมื่อ FastAPI/starlette ออกแพตช์)
 
-## 🔜 ทำต่อ (ถัดไป — Phase 1 hardening / Phase 2)
-1. **npm audit:** frontend มี 2 ช่องโหว่ (1 moderate/1 high, dev deps) — รัน `npm audit` แล้วอัปเดต
-2. Step 8 hardening — negative test อัตโนมัติครอบทุก endpoint (cross-tenant) + `pip-audit`
-3. UI จัดการ (สร้าง branch/employee จากหน้าเว็บ), invite user flow
-4. Phase 2 — Evaluation UI (BARS scoring) + approval workflow (5 ระดับ), เติม `desc_1..5` (BARS anchors) จริง, สูตรคะแนน attendance (เต็ม 40) จาก HR
+## 🔜 ทำต่อ (ถัดไป — Phase 2)
+1. UI จัดการ (สร้าง branch/employee จากหน้าเว็บ), invite user flow, หน้า super_admin สร้าง tenant
+2. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix version ปล่อยจริง
+3. Phase 2 — Evaluation UI (BARS scoring) + approval workflow (5 ระดับ), เติม `desc_1..5` (BARS anchors) จริง, สูตรคะแนน attendance (เต็ม 40) จาก HR
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
