@@ -73,6 +73,20 @@ async def create_employee(
     return dict(row)
 
 
+@router.get("/templates")
+async def list_templates(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
+    # RLS returns master (company_id is null) + this tenant's templates
+    rows = (
+        await session.execute(
+            text(
+                "select id, name, applies_to_level, status from criteria_templates "
+                "order by name, version"
+            )
+        )
+    ).mappings().all()
+    return [dict(r) for r in rows]
+
+
 @router.get("/branches", response_model=list[BranchOut])
 async def list_branches(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
     rows = (

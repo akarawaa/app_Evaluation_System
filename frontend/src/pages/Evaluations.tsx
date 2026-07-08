@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+
+import { apiGet, apiSend } from '../lib/api'
+import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
+import { STATUS_LABEL } from '../types'
+
+export default function Evaluations() {
+  const navigate = useNavigate()
+  const [evals, setEvals] = useState<EvalListItem[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [employeeId, setEmployeeId] = useState('')
+  const [templateId, setTemplateId] = useState('')
+  const [kind, setKind] = useState('annual')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = () => apiGet<EvalListItem[]>('/api/evaluations').then(setEvals).catch((e) => setError(String(e)))
+
+  useEffect(() => {
+    load()
+    apiGet<Employee[]>('/api/employees').then(setEmployees).catch(() => undefined)
+    apiGet<Template[]>('/api/templates').then(setTemplates).catch(() => undefined)
+  }, [])
+
+  const create = async () => {
+    if (!employeeId || !templateId) return
+    setBusy(true)
+    setError(null)
+    try {
+      const ev = await apiSend<EvalDetail>('POST', '/api/evaluations', {
+        employee_id: employeeId,
+        template_id: templateId,
+        kind,
+      })
+      navigate(`/evaluations/${ev.id}`)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const empName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? id.slice(0, 8)
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
+        <h1 className="font-semibold text-slate-800">ใบประเมินผล</h1>
+        <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
+      </header>
+
+      <main className="p-6 space-y-6 max-w-4xl mx-auto">
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-3 text-slate-700">สร้างใบประเมิน (หัวหน้างาน)</h2>
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-sm">
+              <span className="block text-slate-500">พนักงาน</span>
+              <select className="border rounded px-2 py-1 min-w-48" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                <option value="">— เลือก —</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>{e.emp_code} · {e.full_name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="block text-slate-500">แบบฟอร์ม</span>
+              <select className="border rounded px-2 py-1 min-w-48" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+                <option value="">— เลือก —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="block text-slate-500">ชนิด</span>
+              <select className="border rounded px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value)}>
+                <option value="annual">ประจำปี</option>
+                <option value="probation">ทดลองงาน</option>
+              </select>
+            </label>
+            <button onClick={create} disabled={busy || !employeeId || !templateId}
+              className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+              สร้าง
+            </button>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-3 text-slate-700">รายการใบประเมิน</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500 border-b">
+                <th className="py-1">พนักงาน</th><th>ชนิด</th><th>สถานะ</th><th>คะแนน</th><th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evals.map((ev) => (
+                <tr key={ev.id} className="border-b last:border-0 hover:bg-slate-50 cursor-pointer"
+                    onClick={() => navigate(`/evaluations/${ev.id}`)}>
+                  <td className="py-1.5">{empName(ev.employee_id)}</td>
+                  <td>{ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</td>
+                  <td>{STATUS_LABEL[ev.status] ?? ev.status}</td>
+                  <td>{ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</td>
+                  <td>{ev.percentage != null ? `${ev.percentage}%` : '—'}</td>
+                </tr>
+              ))}
+              {evals.length === 0 && (
+                <tr><td colSpan={5} className="py-3 text-slate-400">ยังไม่มีใบประเมิน</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+  )
+}

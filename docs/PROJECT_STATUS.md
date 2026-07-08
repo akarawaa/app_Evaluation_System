@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1 เสร็จ → **Phase 2**: Step 1 (schema) + Step 2 (backend lifecycle API) เสร็จ+พิสูจน์ (pytest 18/18) → ถัดไป Step 3 (frontend ให้คะแนน + approval inbox)
+**สเต็ปที่กำลังทำ:** Phase 1 เสร็จ → **Phase 2**: Step 1–3 เสร็จ+พิสูจน์ (schema · backend lifecycle pytest 18/18 · frontend ให้คะแนน browser จริง) → เหลือ polish + รอ HR (สูตร attendance, BARS anchors)
 
 ---
 
@@ -33,10 +33,13 @@
 
 - **Phase 2 Step 2 (backend lifecycle) เสร็จ+พิสูจน์** → `backend/app/api/evaluations.py`, `services/evaluations.py`, `schemas/evaluation.py`. Endpoints: POST /api/evaluations (สร้าง+snapshot), GET (list/detail), PUT /{id}/scores (คะแนน+comment+attendance, เฉพาะ evaluator, สถานะ draft/returned), POST /{id}/submit·/approve·/return·/finalize. Routing ตามสายจริง (evaluator=supervisor_id, approve dept=manager_id, md=role, hr finalize=role), audit ทุก transition. **pytest 18/18** (`test_evaluation_lifecycle.py` เดิน draft→submit→dept→md→finalize + เช็ค 403 ทุกชั้น + cross-tenant 404)
 
-## 🔜 ทำต่อ (ถัดไป — Phase 2)
-1. **Step 3 frontend** — ฟอร์มให้คะแนน BARS (ราย item + comment + attendance) + approval inbox ตามบทบาท + หน้าสถานะ/รายละเอียดใบ
+- **Phase 2 Step 3 (frontend) เสร็จ+พิสูจน์** → `frontend/src/pages/Evaluations.tsx` (list + สร้างใบ), `EvaluationDetail.tsx` (ฟอร์มให้คะแนนราย item 1–5 step .5 + comment ระดับหมวด + attendance + ปุ่ม submit/approve/return/finalize ตามสถานะ), `lib/api.ts` (+apiSend), `types.ts`; backend เพิ่ม `GET /api/templates`. `npm run build` ผ่าน; ทดสอบ browser จริง: login หัวหน้า → สร้างใบ (snapshot 28) → ให้คะแนน 4 ทุกข้อ+att30 → บันทึก (112/140, 78.89%) → submit (→รอ ผจก.แผนก) ไม่มี console error
+
+## 🔜 ทำต่อ (ถัดไป)
+1. Polish frontend: approval inbox (กรองใบที่รอเราอนุมัติ), หน้าจัดการ employee/branch/tenant, แสดงปุ่มตาม role จริง (ตอนนี้อิงสถานะ + backend 403)
 2. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix ปล่อยจริง
 3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+4. Phase 3 — PDF export (ReportLab/WeasyPrint)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

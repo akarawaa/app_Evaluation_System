@@ -2,13 +2,33 @@ import { supabase } from './supabase'
 
 const base = import.meta.env.VITE_API_BASE_URL as string
 
-// Attaches the current access token so the backend can verify + scope by tenant.
-export async function apiGet<T>(path: string): Promise<T> {
+async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function errText(res: Response): Promise<string> {
+  try {
+    const j = await res.json()
+    return j?.detail ? `${res.status}: ${j.detail}` : `HTTP ${res.status}`
+  } catch {
+    return `HTTP ${res.status}`
+  }
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${base}${path}`, { headers: await authHeaders() })
+  if (!res.ok) throw new Error(await errText(res))
+  return (await res.json()) as T
+}
+
+export async function apiSend<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${base}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    method,
+    headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+  if (!res.ok) throw new Error(await errText(res))
   return (await res.json()) as T
 }

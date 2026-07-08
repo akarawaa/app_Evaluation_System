@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
@@ -36,9 +37,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">E-Appraisal</h1>
-        <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
-          ออกจากระบบ
-        </button>
+        <nav className="flex items-center gap-4">
+          <Link to="/evaluations" className="text-sm text-blue-600 hover:text-blue-800">ใบประเมินผล</Link>
+          <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
+            ออกจากระบบ
+          </button>
+        </nav>
       </header>
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">
