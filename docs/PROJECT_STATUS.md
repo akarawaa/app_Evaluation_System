@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1 เสร็จครบ → **Phase 2**: ออกแบบเสร็จ (`docs/EVALUATION_DESIGN.md`) + **Step 1 schema เสร็จ+พิสูจน์** (migrations 0010–0013 + smoke test) → ถัดไป Step 2 (backend evaluation API)
+**สเต็ปที่กำลังทำ:** Phase 1 เสร็จ → **Phase 2**: Step 1 (schema) + Step 2 (backend lifecycle API) เสร็จ+พิสูจน์ (pytest 18/18) → ถัดไป Step 3 (frontend ให้คะแนน + approval inbox)
 
 ---
 
@@ -31,11 +31,12 @@
 - **Phase 2 Step 1 (schema) เสร็จ+พิสูจน์แล้ว** → `docs/EVALUATION_DESIGN.md` + `docs/PHASE_2_PLAN.md`; migrations `0010` (roles dept_manager/md), `0011` (evaluation_cycles/evaluations/items snapshot/scores(CHECK 1–5 step .5)/comments/attendance + RLS ทุกตาราง), `0012` (evaluation_approvals append-only), `0013` (fn `snapshot_evaluation_items`, `recompute_evaluation_totals` equal-weight). Smoke test: snapshot 28 → 112/140 +att30 → 142/180=78.89%, CHECK กัน 4.3 ✓
 - **การตัดสินใจ Phase 2:** 2 ชนิด (annual/probation), หัวหน้าให้คะแนน (ไม่มี self), workflow หลายชั้น routing **ตามสายบังคับบัญชาจริง** (supervisor_id→manager_id→role md→role hr_admin), คะแนนเท่ากันทุกข้อ, snapshot เกณฑ์ตอนสร้างใบ
 
+- **Phase 2 Step 2 (backend lifecycle) เสร็จ+พิสูจน์** → `backend/app/api/evaluations.py`, `services/evaluations.py`, `schemas/evaluation.py`. Endpoints: POST /api/evaluations (สร้าง+snapshot), GET (list/detail), PUT /{id}/scores (คะแนน+comment+attendance, เฉพาะ evaluator, สถานะ draft/returned), POST /{id}/submit·/approve·/return·/finalize. Routing ตามสายจริง (evaluator=supervisor_id, approve dept=manager_id, md=role, hr finalize=role), audit ทุก transition. **pytest 18/18** (`test_evaluation_lifecycle.py` เดิน draft→submit→dept→md→finalize + เช็ค 403 ทุกชั้น + cross-tenant 404)
+
 ## 🔜 ทำต่อ (ถัดไป — Phase 2)
-1. **Step 2 backend** — evaluation lifecycle API (สร้างใบ+snapshot, ให้คะแนน/comment/attendance, submit, approve/return ตาม hierarchy, hr finalize) + audit ทุก transition + pytest
-2. **Step 3 frontend** — ฟอร์มให้คะแนน BARS + approval inbox + หน้าสถานะ
-3. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix ปล่อยจริง
-4. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+1. **Step 3 frontend** — ฟอร์มให้คะแนน BARS (ราย item + comment + attendance) + approval inbox ตามบทบาท + หน้าสถานะ/รายละเอียดใบ
+2. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix ปล่อยจริง
+3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
