@@ -26,9 +26,10 @@
 | [docs/evaluation-form-analysis.md](docs/evaluation-form-analysis.md) | วิเคราะห์ใบประเมินเดิม (FMHR07) |
 
 ## Phases
-1. **Phase 1** — Database + Multi-Tenant Auth + RBAC + Criteria/Template foundation *(กำลังทำ)*
-2. **Phase 2** — Evaluation UI (BARS scoring) + Approval Workflow
-3. **Phase 3** — Reporting & PDF Export
+1. **Phase 1** — Database + Multi-Tenant Auth + RBAC + Criteria/Template foundation ✅
+2. **Phase 2** — Evaluation UI (BARS scoring) + multi-level Approval Workflow ✅
+3. **Phase 3** — PDF Export (ReportLab, Thai font) ✅
 
 ## Status
-🚧 Phase 1 — Planning & Foundation (ดู [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md))
+✅ Phase 1–3 core เสร็จ + พิสูจน์บน local (pytest 19/19 + browser + PDF) —
+เหลือ polish UI + เนื้อหาจาก HR (สูตร attendance, BARS anchors). ดู [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
