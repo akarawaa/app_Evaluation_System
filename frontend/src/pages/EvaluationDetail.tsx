@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { apiGet, apiSend } from '../lib/api'
+import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { EvalDetail } from '../types'
 import { STATUS_LABEL } from '../types'
 
@@ -68,7 +68,12 @@ export default function EvaluationDetail() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">รายละเอียดใบประเมิน</h1>
-        <button onClick={() => navigate('/evaluations')} className="text-sm text-slate-600 hover:text-slate-900">← กลับ</button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
+            className="text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
+          <button onClick={() => navigate('/evaluations')} className="text-sm text-slate-600 hover:text-slate-900">← กลับ</button>
+        </div>
       </header>
 
       <main className="p-6 space-y-5 max-w-3xl mx-auto">

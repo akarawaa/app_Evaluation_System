@@ -1,6 +1,6 @@
 """Evaluation lifecycle API (Phase 2, Step 2). All DB access via the tenant
 session (RLS-scoped); state transitions + authorization live in the service."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
@@ -12,6 +12,8 @@ from app.schemas.evaluation import (
     ScoresUpdate,
 )
 from app.services import evaluations as svc
+from app.services.audit import write_audit
+from app.services.pdf import build_evaluation_pdf
 
 router = APIRouter(prefix="/api/evaluations")
 
@@ -36,6 +38,23 @@ async def get_evaluation(
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
     return await svc.get_detail(session, eval_id)
+
+
+@router.get("/{eval_id}/pdf")
+async def evaluation_pdf(
+    eval_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> Response:
+    ctx = await svc.get_report_context(session, eval_id)
+    pdf_bytes = build_evaluation_pdf(ctx)
+    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+                      action="evaluation_exported", entity_type="evaluations", entity_id=eval_id)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="evaluation-{eval_id}.pdf"'},
+    )
 
 
 @router.put("/{eval_id}/scores")

@@ -134,6 +134,19 @@ async def test_return_reopens_for_editing(api, org):
     assert r.status_code == 200
 
 
+async def test_pdf_export(api, org):
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+    ev = r.json()
+    eid = ev["id"]
+    scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]
+    await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]),
+                  json={"scores": scores, "attendance": {"attendance_score": 30}})
+    r = await api.get(f"/api/evaluations/{eid}/pdf", headers=auth(org["sup"]))
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/pdf")
+    assert r.content[:4] == b"%PDF"
+
+
 async def test_cross_tenant_cannot_see_evaluation(api, org, world):
     r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
     eid = r.json()["id"]

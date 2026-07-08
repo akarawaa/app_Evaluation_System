@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1 เสร็จ → **Phase 2**: Step 1–3 เสร็จ+พิสูจน์ (schema · backend lifecycle pytest 18/18 · frontend ให้คะแนน browser จริง) → เหลือ polish + รอ HR (สูตร attendance, BARS anchors)
+**สเต็ปที่กำลังทำ:** Phase 1 + Phase 2 (Step 1–3) + **Phase 3 (PDF export)** เสร็จ+พิสูจน์ (pytest 19/19 · browser · PDF ไทยเรนเดอร์ถูก) → เหลือ polish UI + รอ HR (สูตร attendance, BARS anchors)
 
 ---
 
@@ -35,11 +35,13 @@
 
 - **Phase 2 Step 3 (frontend) เสร็จ+พิสูจน์** → `frontend/src/pages/Evaluations.tsx` (list + สร้างใบ), `EvaluationDetail.tsx` (ฟอร์มให้คะแนนราย item 1–5 step .5 + comment ระดับหมวด + attendance + ปุ่ม submit/approve/return/finalize ตามสถานะ), `lib/api.ts` (+apiSend), `types.ts`; backend เพิ่ม `GET /api/templates`. `npm run build` ผ่าน; ทดสอบ browser จริง: login หัวหน้า → สร้างใบ (snapshot 28) → ให้คะแนน 4 ทุกข้อ+att30 → บันทึก (112/140, 78.89%) → submit (→รอ ผจก.แผนก) ไม่มี console error
 
+- **Phase 3 (PDF export) เสร็จ+พิสูจน์** → `backend/app/services/pdf.py` (ReportLab + ฟอนต์ไทย Leelawadee UI, path ตั้งค่าผ่าน `PDF_FONT_PATH` เผื่อ Linux), `GET /api/evaluations/{id}/pdf` (RLS-scoped + audit `evaluation_exported`), `services/evaluations.get_report_context` (resolve ชื่อ emp/evaluator/company). Frontend: `apiDownload` + ปุ่ม "ดาวน์โหลด PDF". พิสูจน์: อ่าน PDF จริง — ฟอนต์ไทยถูก, layout (header บริษัท·ตารางข้อมูล·เกณฑ์รายหมวด·สรุปคะแนน·การอนุมัติ). pytest 19/19 (+`test_pdf_export`)
+  > production ควร bundle ฟอนต์ OFL (เช่น Sarabun) แทนฟอนต์ระบบ Windows
+
 ## 🔜 ทำต่อ (ถัดไป)
 1. Polish frontend: approval inbox (กรองใบที่รอเราอนุมัติ), หน้าจัดการ employee/branch/tenant, แสดงปุ่มตาม role จริง (ตอนนี้อิงสถานะ + backend 403)
-2. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix ปล่อยจริง
+2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
 3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
-4. Phase 3 — PDF export (ReportLab/WeasyPrint)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

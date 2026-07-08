@@ -69,6 +69,25 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     return ev
 
 
+async def get_report_context(session: AsyncSession, eval_id: str) -> dict:
+    ev = await get_detail(session, eval_id)
+    emp = (await session.execute(text(
+        "select emp_code, full_name, position from employees where id = :id"
+    ), {"id": ev["employee_id"]})).mappings().first()
+    ev["_employee"] = dict(emp) if emp else {}
+    ev["_evaluator"] = {}
+    if ev.get("evaluator_id"):
+        evr = (await session.execute(text(
+            "select full_name from employees where id = :id"
+        ), {"id": ev["evaluator_id"]})).mappings().first()
+        ev["_evaluator"] = dict(evr) if evr else {}
+    comp = (await session.execute(text(
+        "select name from companies where id = :id"
+    ), {"id": ev["company_id"]})).mappings().first()
+    ev["_company"] = dict(comp) if comp else {}
+    return ev
+
+
 async def list_all(session: AsyncSession) -> list[dict]:
     rows = (await session.execute(text(
         "select id, employee_id, evaluator_id, kind, probation_checkpoint, status, "

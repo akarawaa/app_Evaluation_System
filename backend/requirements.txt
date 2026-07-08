@@ -21,6 +21,9 @@ python-jose[cryptography]
 # Logging
 structlog
 
+# Reporting: PDF generation (Phase 3)
+reportlab
+
 # Dev / test
 pytest
 pytest-asyncio
