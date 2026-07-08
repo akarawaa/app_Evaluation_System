@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Step 1–8 เสร็จ + พิสูจน์จริงบน local ครบวง (RLS · Auth Hook · FastAPI · Provisioning · React · security suite) → **Phase 1 เสร็จ** พร้อมขึ้น Phase 2
+**สเต็ปที่กำลังทำ:** Phase 1 เสร็จครบ → **Phase 2**: ออกแบบเสร็จ (`docs/EVALUATION_DESIGN.md`) + **Step 1 schema เสร็จ+พิสูจน์** (migrations 0010–0013 + smoke test) → ถัดไป Step 2 (backend evaluation API)
 
 ---
 
@@ -28,10 +28,14 @@
   - **npm audit:** อัป vite→8.1.3 + plugin-react→6.0.3 → **0 vulnerabilities** (build ยังผ่าน)
   - **pip-audit:** รันแล้ว — ส่วนใหญ่เป็น dev tooling (pip/setuptools/pytest/filelock/msgpack/requests). runtime (starlette/urllib3) ติดตั้งเวอร์ชันล่าสุดที่มีแล้ว fix version ยังไม่ปล่อย = **no-fix-available, track ไว้** (ทบทวนเมื่อ FastAPI/starlette ออกแพตช์)
 
+- **Phase 2 Step 1 (schema) เสร็จ+พิสูจน์แล้ว** → `docs/EVALUATION_DESIGN.md` + `docs/PHASE_2_PLAN.md`; migrations `0010` (roles dept_manager/md), `0011` (evaluation_cycles/evaluations/items snapshot/scores(CHECK 1–5 step .5)/comments/attendance + RLS ทุกตาราง), `0012` (evaluation_approvals append-only), `0013` (fn `snapshot_evaluation_items`, `recompute_evaluation_totals` equal-weight). Smoke test: snapshot 28 → 112/140 +att30 → 142/180=78.89%, CHECK กัน 4.3 ✓
+- **การตัดสินใจ Phase 2:** 2 ชนิด (annual/probation), หัวหน้าให้คะแนน (ไม่มี self), workflow หลายชั้น routing **ตามสายบังคับบัญชาจริง** (supervisor_id→manager_id→role md→role hr_admin), คะแนนเท่ากันทุกข้อ, snapshot เกณฑ์ตอนสร้างใบ
+
 ## 🔜 ทำต่อ (ถัดไป — Phase 2)
-1. UI จัดการ (สร้าง branch/employee จากหน้าเว็บ), invite user flow, หน้า super_admin สร้าง tenant
-2. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix version ปล่อยจริง
-3. Phase 2 — Evaluation UI (BARS scoring) + approval workflow (5 ระดับ), เติม `desc_1..5` (BARS anchors) จริง, สูตรคะแนน attendance (เต็ม 40) จาก HR
+1. **Step 2 backend** — evaluation lifecycle API (สร้างใบ+snapshot, ให้คะแนน/comment/attendance, submit, approve/return ตาม hierarchy, hr finalize) + audit ทุก transition + pytest
+2. **Step 3 frontend** — ฟอร์มให้คะแนน BARS + approval inbox + หน้าสถานะ
+3. ทบทวน pip-audit runtime advisories เมื่อ starlette/urllib3 มี fix ปล่อยจริง
+4. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
