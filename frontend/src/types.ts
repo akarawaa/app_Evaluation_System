@@ -10,8 +10,22 @@ export type Employee = {
   id: string
   emp_code: string
   full_name: string
+  position: string | null
   level: string
   status: string
+  branch_id: string | null
+  branch_name: string | null
+  supervisor_id: string | null
+  supervisor_name: string | null
+  manager_id: string | null
+  manager_name: string | null
+}
+
+export type Branch = { id: string; name: string }
+
+export const LEVEL_LABEL: Record<string, string> = {
+  operational: 'พนักงานปฏิบัติการ',
+  supervisor: 'หัวหน้างาน',
 }
 
 export type Template = {

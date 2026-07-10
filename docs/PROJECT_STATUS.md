@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1 + Phase 2 (Step 1–3) + Phase 3 (PDF export) + **approval inbox** เสร็จ+พิสูจน์ (pytest 20/20 · browser) → เหลือ polish UI ที่เหลือ + รอ HR (สูตร attendance, BARS anchors)
+**สเต็ปที่กำลังทำ:** Phase 1–3 + approval inbox + **หน้าจัดการ employee/branch** เสร็จ+พิสูจน์ (pytest 26/26 · browser) → เหลือ tenant/invite UI + รอ HR (สูตร attendance, BARS anchors)
 
 ---
 
@@ -40,8 +40,10 @@
 
 - **Approval Inbox เสร็จ+พิสูจน์** → `GET /api/evaluations/inbox` (`services/evaluations.list_inbox`, ประกาศ**ก่อน** `/{eval_id}` ใน router กัน path collision) resolve งานที่รอผู้ใช้ตาม role/สายบังคับบัญชาแบบเดียวกับ authorization จริง (score=evaluator, dept_approve=manager_id, md_approve=role md, finalize=role hr_admin). Frontend: `pages/Inbox.tsx` + type `InboxItem`/`ACTION_LABEL`, ลิงก์ "งานที่รอฉัน" บน Dashboard/Evaluations, route `/inbox`. พิสูจน์: pytest เดินครบ 4 ชั้น (inbox ของแต่ละคนถูก/ไม่ถูกตามช่วง) + browser จริง (login ผจก.แผนก → เห็นใบรออนุมัติ → กดอนุมัติ → inbox ว่าง "ไม่มีงานค้าง 🎉"). **pytest 20/20**
 
+- **หน้าจัดการ employee/branch เสร็จ+พิสูจน์** → `backend/app/services/employees.py` (list/create/update employee, list/create/rename branch; **validate branch_id/supervisor_id/manager_id ผ่าน RLS-scoped SELECT** — plain FK ไม่พอเพราะไม่รู้ tenant, ต้องยืนยันว่าแถวที่อ้างอิงมองเห็นได้ใน session ของผู้เรียกจริง ๆ), `schemas/employee.py` (+EmployeeUpdate, ขยาย EmployeeOut ให้มี branch/supervisor/manager id+name). Routes: `GET/PATCH /api/employees/{id}`, `PATCH /api/branches/{id}` (เดิมมี GET/POST อยู่แล้ว). Frontend: `pages/People.tsx` (จัดการสาขา + ฟอร์มเพิ่ม/แก้ไขพนักงานพร้อม dropdown branch/supervisor/manager + toggle active/inactive), route `/people`, ลิงก์ "พนักงาน & สาขา" (เฉพาะ hr_admin/super_admin). พิสูจน์: pytest 6 เคสใหม่ (`test_admin_management.py`: rename branch, สร้าง employee พร้อม org chain, แก้ไข, **กัน self-supervisor (400)**, **กัน cross-tenant branch/supervisor (400)**, RBAC 403) + browser จริงครบ flow (สร้างสาขา→เพิ่มหัวหน้า→เพิ่มลูกน้องผูก branch+supervisor→แก้ไขตำแหน่ง→ปิดใช้งาน→rename สาขา). **pytest 26/26**
+
 ## 🔜 ทำต่อ (ถัดไป)
-1. Polish frontend ที่เหลือ: หน้าจัดการ employee/branch/tenant + invite user, แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้)
+1. Polish frontend ที่เหลือ: หน้าจัดการ tenant (super_admin) + invite user flow, แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้)
 2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
 3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
 

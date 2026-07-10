@@ -40,6 +40,9 @@ export default function Dashboard() {
         <nav className="flex items-center gap-4">
           <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
           <Link to="/evaluations" className="text-sm text-blue-600 hover:text-blue-800">ใบประเมินผล</Link>
+          {isHrAdmin && (
+            <Link to="/people" className="text-sm text-blue-600 hover:text-blue-800">พนักงาน &amp; สาขา</Link>
+          )}
           <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
             ออกจากระบบ
           </button>
@@ -69,7 +72,7 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-3">
             <h2 className="font-medium text-slate-700">พนักงาน (เห็นเฉพาะ tenant ของคุณ)</h2>
             {isHrAdmin && (
-              <span className="text-xs text-slate-400">* hr_admin เพิ่มพนักงานได้ (Step ถัดไป)</span>
+              <Link to="/people" className="text-xs text-blue-600 hover:text-blue-800">จัดการพนักงาน &amp; สาขา →</Link>
             )}
           </div>
           <table className="w-full text-sm">

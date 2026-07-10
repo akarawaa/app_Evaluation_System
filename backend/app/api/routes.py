@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_tenant_session
 from app.core.security import CurrentUser, get_current_user, require_roles
 from app.schemas.branch import BranchCreate, BranchOut
-from app.schemas.employee import EmployeeCreate, EmployeeOut
-from app.services.audit import write_audit
+from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
+from app.services import employees as emp_svc
 
 router = APIRouter(prefix="/api")
 
@@ -24,17 +24,9 @@ async def me(user: CurrentUser = Depends(get_current_user)) -> dict:
     }
 
 
-@router.get("/employees")
+@router.get("/employees", response_model=list[EmployeeOut])
 async def list_employees(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    rows = (
-        await session.execute(
-            text(
-                "select id, emp_code, full_name, level, status "
-                "from employees order by emp_code"
-            )
-        )
-    ).mappings().all()
-    return [dict(r) for r in rows]
+    return await emp_svc.list_employees(session)
 
 
 @router.post("/employees", response_model=EmployeeOut, status_code=status.HTTP_201_CREATED)
@@ -43,34 +35,25 @@ async def create_employee(
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    row = (
-        await session.execute(
-            text(
-                "insert into employees "
-                "(company_id, branch_id, emp_code, full_name, position, level) "
-                "values (:cid, :branch_id, :emp_code, :full_name, :position, :level) "
-                "returning id, emp_code, full_name, level, status"
-            ),
-            {
-                "cid": user.company_id,
-                "branch_id": str(payload.branch_id) if payload.branch_id else None,
-                "emp_code": payload.emp_code,
-                "full_name": payload.full_name,
-                "position": payload.position,
-                "level": payload.level,
-            },
-        )
-    ).mappings().one()
-    await write_audit(
-        session,
-        company_id=user.company_id,
-        actor_id=user.id,
-        action="create",
-        entity_type="employees",
-        entity_id=row["id"],
-        after=dict(row),
-    )
-    return dict(row)
+    return await emp_svc.create_employee(session, user, payload)
+
+
+@router.get("/employees/{employee_id}", response_model=EmployeeOut)
+async def get_employee(
+    employee_id: str,
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await emp_svc.get_employee(session, employee_id)
+
+
+@router.patch("/employees/{employee_id}", response_model=EmployeeOut)
+async def update_employee(
+    employee_id: str,
+    payload: EmployeeUpdate,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await emp_svc.update_employee(session, user, employee_id, payload)
 
 
 @router.get("/templates")
@@ -89,10 +72,7 @@ async def list_templates(session: AsyncSession = Depends(get_tenant_session)) ->
 
 @router.get("/branches", response_model=list[BranchOut])
 async def list_branches(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    rows = (
-        await session.execute(text("select id, name from branches order by name"))
-    ).mappings().all()
-    return [dict(r) for r in rows]
+    return await emp_svc.list_branches(session)
 
 
 @router.post("/branches", response_model=BranchOut, status_code=status.HTTP_201_CREATED)
@@ -101,24 +81,14 @@ async def create_branch(
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    # company_id comes from the verified JWT, never from the client body.
-    # RLS also re-checks company_id on INSERT (defense in depth).
-    row = (
-        await session.execute(
-            text(
-                "insert into branches (company_id, name) values (:cid, :name) "
-                "returning id, name"
-            ),
-            {"cid": user.company_id, "name": payload.name},
-        )
-    ).mappings().one()
-    await write_audit(
-        session,
-        company_id=user.company_id,
-        actor_id=user.id,
-        action="create",
-        entity_type="branches",
-        entity_id=row["id"],
-        after=dict(row),
-    )
-    return dict(row)
+    return await emp_svc.create_branch(session, user, payload.name)
+
+
+@router.patch("/branches/{branch_id}", response_model=BranchOut)
+async def update_branch(
+    branch_id: str,
+    payload: BranchCreate,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await emp_svc.update_branch(session, user, branch_id, payload.name)
