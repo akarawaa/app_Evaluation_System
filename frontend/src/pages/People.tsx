@@ -2,20 +2,26 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
-import type { Branch, Employee, ImportResult } from '../types'
-import { LEVEL_LABEL } from '../types'
+import type { Branch, Employee, ImportResult, TenantUser } from '../types'
+import { LEVEL_LABEL, ROLE_LABEL } from '../types'
 
 const emptyForm = {
   emp_code: '', full_name: '', position: '', level: 'operational',
   branch_id: '', supervisor_id: '', manager_id: '',
 }
 
+const inviteRoles = ['hr_admin', 'manager', 'dept_manager', 'md', 'employee']
+const emptyInvite = { email: '', password: '', role: 'manager' }
+
 export default function People() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
+  const [users, setUsers] = useState<TenantUser[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const [invite, setInvite] = useState(emptyInvite)
 
   const [newBranch, setNewBranch] = useState('')
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
@@ -30,6 +36,7 @@ export default function People() {
   const load = () => Promise.all([
     apiGet<Employee[]>('/api/employees').then(setEmployees),
     apiGet<Branch[]>('/api/branches').then(setBranches),
+    apiGet<TenantUser[]>('/api/users').then(setUsers),
   ]).catch((e) => setError(String(e)))
 
   useEffect(() => { load() }, [])
@@ -101,6 +108,14 @@ export default function People() {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  const sendInvite = () => {
+    if (!invite.email.trim() || invite.password.length < 8) return
+    run(async () => {
+      await apiSend('POST', '/api/users/invite', { email: invite.email.trim(), password: invite.password, role: invite.role })
+      setInvite(emptyInvite)
+    }, 'เชิญผู้ใช้เข้าระบบแล้ว')
   }
 
   return (
@@ -302,6 +317,56 @@ export default function People() {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-1 text-slate-700">ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            แยกจาก "พนักงาน" ด้านบน — เฉพาะคนที่ต้องล็อกอินเข้าระบบ (เช่น หัวหน้างานที่ต้องให้คะแนน
+            หรือผู้อนุมัติ) เท่านั้นที่ต้องเชิญที่นี่ พนักงานทั่วไปไม่จำเป็นต้องมีบัญชี
+          </p>
+          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+            <label>
+              <span className="block text-slate-500 mb-0.5">อีเมล</span>
+              <input type="email" className="border rounded px-2 py-1 w-full" value={invite.email}
+                onChange={(e) => setInvite((f) => ({ ...f, email: e.target.value }))} />
+            </label>
+            <label>
+              <span className="block text-slate-500 mb-0.5">รหัสผ่านเริ่มต้น (≥ 8 ตัว)</span>
+              <input type="text" className="border rounded px-2 py-1 w-full" value={invite.password}
+                onChange={(e) => setInvite((f) => ({ ...f, password: e.target.value }))} />
+            </label>
+            <label>
+              <span className="block text-slate-500 mb-0.5">บทบาท</span>
+              <select className="border rounded px-2 py-1 w-full" value={invite.role}
+                onChange={(e) => setInvite((f) => ({ ...f, role: e.target.value }))}>
+                {inviteRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+            </label>
+          </div>
+          <button onClick={sendInvite} disabled={busy || !invite.email.trim() || invite.password.length < 8}
+            className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+            เชิญเข้าระบบ
+          </button>
+
+          <table className="w-full text-sm mt-4">
+            <thead>
+              <tr className="text-left text-slate-500 border-b">
+                <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-b last:border-0">
+                  <td className="py-1.5 pr-2">{u.display_name ?? '—'}</td>
+                  <td>{u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || '—'}</td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr><td colSpan={2} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
+              )}
+            </tbody>
+          </table>
         </section>
       </main>
     </div>

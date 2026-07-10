@@ -9,8 +9,12 @@ from app.core.security import CurrentUser, get_current_user, require_roles
 from app.schemas.branch import BranchCreate, BranchOut
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.schemas.employee_import import ImportResult
+from app.schemas.tenant import InviteUserIn
+from app.schemas.user import UserOut
 from app.services import employees as emp_svc
 from app.services import employee_import as import_svc
+from app.services import tenant_admin as tenant_admin_svc
+from app.services import users as users_svc
 
 router = APIRouter(prefix="/api")
 
@@ -118,3 +122,27 @@ async def update_branch(
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
     return await emp_svc.update_branch(session, user, branch_id, payload.name)
+
+
+@router.get("/users", response_model=list[UserOut])
+async def list_users(
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    return await users_svc.list_users(session)
+
+
+@router.post("/users/invite", status_code=status.HTTP_201_CREATED)
+async def invite_user(
+    payload: InviteUserIn,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    # Self-service: hr_admin invites into their OWN tenant only — company_id
+    # comes from the verified JWT, never accepted from the request body, so
+    # there is no way to target another company through this endpoint.
+    return await tenant_admin_svc.invite_user(
+        session, user.id, user.company_id,
+        payload.email, payload.password, payload.role,
+        str(payload.employee_id) if payload.employee_id else None,
+    )

@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + approval inbox + employee/branch admin + นำเข้า CSV + **หน้าจัดการ tenant (super_admin)** เสร็จ+พิสูจน์ (pytest 46/46 · browser) → เหลือ self-service invite (hr_admin เชิญเองในบริษัทตัวเอง) + รอ HR (สูตร attendance, BARS anchors)
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling ครบ (approval inbox · employee/branch · CSV import · tenant management · **self-service invite**) เสร็จ+พิสูจน์ (pytest 53/53 · browser) → เหลือแสดงปุ่มตาม role จริงในทุกหน้า + รอ HR (สูตร attendance, BARS anchors)
 
 ---
 
@@ -58,11 +58,17 @@
   - Frontend: `pages/Tenants.tsx` (list + สร้างบริษัทใหม่), `pages/TenantDetail.tsx` (ข้อมูล + ปุ่มระงับ/เปิดใช้งาน + เชิญผู้ใช้ + ตาราง users), route `/tenants`, `/tenants/:id`, ลิงก์ "จัดการบริษัท" (เฉพาะ super_admin)
   - พิสูจน์: pytest 11 เคสใหม่ (`test_tenant_admin.py`: list/detail RBAC, **suspend บล็อกจริง + reactivate คืนสิทธิ์**, invite+login ยืนยัน role ใน JWT, กัน mint super_admin (422), กัน cross-tenant employee_id (400)) + browser จริงครบ flow (สร้าง tenant→เชิญ dept_manager→กดระงับ→**ยืนยันด้วย curl ว่า hr_admin โดน 403 จริง**→เปิดใช้งานคืน→ยืนยัน 200). **pytest 46/46**
 
+- **Self-service invite เสร็จ+พิสูจน์** (hr_admin เชิญผู้ใช้เองในบริษัทตัวเอง ไม่ต้องพึ่ง super_admin) →
+  - **Reuse `services/tenant_admin.invite_user` เดิม** ตรง ๆ แค่เรียกด้วย `company_id=user.company_id` (จาก JWT ที่ verify แล้ว ไม่รับจาก client) แทน path param ของ super_admin — validation (role ที่ mint ได้, กัน cross-tenant employee_id) ใช้ร่วมกันไม่ต้องเขียนซ้ำ
+  - `services/users.py` ใหม่ (`list_users`) — ต่างจาก `tenant_admin.py` ตรงที่ query **ไม่ต้องระบุ company_id เอง** เพราะ RLS scope โดยนัยผ่าน `user.company_id` ของ hr_admin ทำงานถูกต้องอยู่แล้ว (คนละสถานการณ์กับ super_admin ที่ company_id ชี้ไป platform tenant)
+  - Routes: `GET /api/users`, `POST /api/users/invite` (ทั้งคู่ hr_admin only)
+  - Frontend: เพิ่ม section "ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)" ใน `People.tsx` — ฟอร์ม invite + ตาราง users, อธิบายชัดว่าต่างจาก "พนักงาน" ยังไง (employees=ใครถูกประเมิน, users=ใครล็อกอินได้)
+  - พิสูจน์: pytest 7 เคสใหม่ (`test_self_invite.py`: list เห็นเฉพาะ tenant ตัวเอง, invite+login ยืนยัน role, **เชิญข้าม tenant ไม่ได้เพราะไม่มีช่องรับ company_id เลย**, RBAC, กัน mint super_admin, กัน cross-tenant employee_id) + browser จริง (login hr_admin→invite manager→login ผู้ถูกเชิญจริงผ่าน curl ยืนยัน company_id/role ถูกต้อง). **pytest 53/53**
+
 ## 🔜 ทำต่อ (ถัดไป)
-1. Self-service invite: ให้ hr_admin เชิญผู้ใช้เองภายในบริษัทตัวเอง (ตอนนี้ invite ทำได้เฉพาะ super_admin ผ่าน `/api/admin/tenants/{id}/users`) — ต่อยอดจาก `services/tenant_admin.invite_user` ได้เลย แค่เปลี่ยน authorization + scope ด้วย `user.company_id`
-2. แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้เป็นหลัก ไม่ได้ซ่อน UI ทุกจุด)
-3. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-4. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+1. แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้เป็นหลัก ไม่ได้ซ่อน UI ทุกจุด)
+2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
