@@ -38,6 +38,7 @@ export default function Dashboard() {
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">E-Appraisal</h1>
         <nav className="flex items-center gap-4">
+          <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
           <Link to="/evaluations" className="text-sm text-blue-600 hover:text-blue-800">ใบประเมินผล</Link>
           <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
             ออกจากระบบ

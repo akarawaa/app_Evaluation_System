@@ -97,6 +97,36 @@ async def list_all(session: AsyncSession) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def list_inbox(session: AsyncSession, user: CurrentUser) -> list[dict]:
+    """Evaluations awaiting *this* user's action, resolved the same way
+    approve()/return_to_draft()/finalize() authorize each step:
+      score        -> user is the assigned evaluator (supervisor), status draft/returned
+      dept_approve -> user is the subject's manager, status submitted
+      md_approve   -> user holds role 'md', status dept_approved
+      finalize     -> user holds role 'hr_admin', status md_approved
+    """
+    actor_emp = await _actor_employee_id(session, user.id)
+    is_md = user.is_super_admin or "md" in user.roles
+    is_hr = user.is_super_admin or "hr_admin" in user.roles
+    rows = (await session.execute(text(
+        "select ev.id, ev.employee_id, emp.emp_code, emp.full_name, ev.kind, ev.status, "
+        "ev.percentage, ev.updated_at, ev.created_at, "
+        "case "
+        "  when ev.status in ('draft','returned') and ev.evaluator_id = :actor_emp then 'score' "
+        "  when ev.status = 'submitted' and emp.manager_id = :actor_emp then 'dept_approve' "
+        "  when ev.status = 'dept_approved' and :is_md then 'md_approve' "
+        "  when ev.status = 'md_approved' and :is_hr then 'finalize' "
+        "end as action "
+        "from evaluations ev join employees emp on emp.id = ev.employee_id "
+        "where (ev.status in ('draft','returned') and ev.evaluator_id = :actor_emp) "
+        "   or (ev.status = 'submitted' and emp.manager_id = :actor_emp) "
+        "   or (ev.status = 'dept_approved' and :is_md) "
+        "   or (ev.status = 'md_approved' and :is_hr) "
+        "order by coalesce(ev.updated_at, ev.created_at) desc"
+    ), {"actor_emp": actor_emp, "is_md": is_md, "is_hr": is_hr})).mappings().all()
+    return [dict(r) for r in rows]
+
+
 async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
     emp = (await session.execute(text(
         "select id, supervisor_id, manager_id from employees where id = :id"

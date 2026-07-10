@@ -68,6 +68,26 @@ export type EvalDetail = {
   approvals: EvalApproval[]
 }
 
+export type InboxAction = 'score' | 'dept_approve' | 'md_approve' | 'finalize'
+
+export type InboxItem = {
+  id: string
+  employee_id: string
+  emp_code: string
+  full_name: string
+  kind: string
+  status: string
+  percentage: number | null
+  action: InboxAction
+}
+
+export const ACTION_LABEL: Record<InboxAction, string> = {
+  score: 'รอให้คะแนน',
+  dept_approve: 'รออนุมัติ (ผจก.แผนก)',
+  md_approve: 'รออนุมัติ (MD)',
+  finalize: 'รอสรุป/ปิดใบ (HR)',
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   draft: 'ร่าง',
   submitted: 'ส่งแล้ว (รอ ผจก.แผนก)',

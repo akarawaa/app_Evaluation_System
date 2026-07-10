@@ -32,6 +32,16 @@ async def create_evaluation(
     return await svc.create(session, user, payload)
 
 
+@router.get("/inbox")
+async def inbox(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    """Evaluations awaiting the current user's action. Registered before
+    /{eval_id} so 'inbox' isn't swallowed as a path parameter."""
+    return await svc.list_inbox(session, user)
+
+
 @router.get("/{eval_id}")
 async def get_evaluation(
     eval_id: str,

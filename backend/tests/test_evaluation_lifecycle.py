@@ -134,6 +134,44 @@ async def test_return_reopens_for_editing(api, org):
     assert r.status_code == 200
 
 
+def _ids(inbox):
+    return {row["id"]: row["action"] for row in inbox}
+
+
+async def test_inbox_routes_through_each_step(api, org):
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+    ev = r.json()
+    eid = ev["id"]
+
+    # right after creation: supervisor's inbox shows 'score'; nobody else's does
+    sup_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["sup"]))).json()
+    assert _ids(sup_inbox).get(eid) == "score"
+    for tok in (org["dept"], org["md"], org["hr"], org["emp"]):
+        assert eid not in _ids((await api.get("/api/evaluations/inbox", headers=auth(tok))).json())
+
+    scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]
+    await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]), json={"scores": scores})
+    await api.post(f"/api/evaluations/{eid}/submit", headers=auth(org["sup"]), json={})
+
+    # now dept manager's inbox has it; supervisor's no longer does
+    dept_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["dept"]))).json()
+    assert _ids(dept_inbox).get(eid) == "dept_approve"
+    sup_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["sup"]))).json()
+    assert eid not in _ids(sup_inbox)
+
+    await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["dept"]), json={})
+    md_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["md"]))).json()
+    assert _ids(md_inbox).get(eid) == "md_approve"
+
+    await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["md"]), json={})
+    hr_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["hr"]))).json()
+    assert _ids(hr_inbox).get(eid) == "finalize"
+
+    await api.post(f"/api/evaluations/{eid}/finalize", headers=auth(org["hr"]), json={})
+    hr_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["hr"]))).json()
+    assert eid not in _ids(hr_inbox)
+
+
 async def test_pdf_export(api, org):
     r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
     ev = r.json()
