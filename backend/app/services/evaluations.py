@@ -24,6 +24,15 @@ async def _actor_employee_id(session: AsyncSession, user_id: str):
     return row[0] if row and row[0] is not None else None
 
 
+def _same_employee(a, b) -> bool:
+    """actor_emp == ev["emp_manager_id"] style checks must NOT pass when both
+    sides are unset. Python's `None == None` is True (unlike SQL NULL = NULL,
+    which is unknown/false), so a profile with no employee_id linked yet
+    (e.g. a freshly invited user) could otherwise be treated as the manager
+    of any employee whose manager_id also happens to be unset."""
+    return a is not None and b is not None and a == b
+
+
 async def _load(session: AsyncSession, eval_id: str) -> dict:
     row = (
         await session.execute(
@@ -137,7 +146,7 @@ async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "employee has no supervisor to evaluate them")
 
     actor_emp = await _actor_employee_id(session, user.id)
-    allowed = user.is_super_admin or "hr_admin" in user.roles or actor_emp == emp["supervisor_id"]
+    allowed = user.is_super_admin or "hr_admin" in user.roles or _same_employee(actor_emp, emp["supervisor_id"])
     if not allowed:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not allowed to create this evaluation")
 
@@ -177,7 +186,7 @@ def _require_editable(ev: dict) -> None:
 
 async def _require_evaluator(session: AsyncSession, user: CurrentUser, ev: dict) -> None:
     actor_emp = await _actor_employee_id(session, user.id)
-    if not (user.is_super_admin or actor_emp == ev["evaluator_id"]):
+    if not (user.is_super_admin or _same_employee(actor_emp, ev["evaluator_id"])):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "only the assigned supervisor may do this")
 
 
@@ -251,7 +260,7 @@ async def approve(session: AsyncSession, user: CurrentUser, eval_id: str, commen
     actor_emp = await _actor_employee_id(session, user.id)
 
     if ev["status"] == "submitted":
-        if not (user.is_super_admin or actor_emp == ev["emp_manager_id"]):
+        if not (user.is_super_admin or _same_employee(actor_emp, ev["emp_manager_id"])):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "only the department manager may approve now")
         new_status, step = "dept_approved", "dept_manager"
     elif ev["status"] == "dept_approved":
@@ -279,7 +288,7 @@ async def return_to_draft(session: AsyncSession, user: CurrentUser, eval_id: str
     actor_emp = await _actor_employee_id(session, user.id)
 
     if ev["status"] == "submitted":
-        authorized = user.is_super_admin or actor_emp == ev["emp_manager_id"]
+        authorized = user.is_super_admin or _same_employee(actor_emp, ev["emp_manager_id"])
         step = "dept_manager"
     elif ev["status"] == "dept_approved":
         authorized = user.is_super_admin or "md" in user.roles

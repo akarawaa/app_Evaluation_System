@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { EvalDetail } from '../types'
 import { STATUS_LABEL } from '../types'
@@ -8,6 +9,7 @@ import { STATUS_LABEL } from '../types'
 const SCORE_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 export default function EvaluationDetail() {
+  const { me } = useAuth()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [ev, setEv] = useState<EvalDetail | null>(null)
@@ -29,6 +31,21 @@ export default function EvaluationDetail() {
   useEffect(() => { load() }, [id])
 
   const editable = ev?.status === 'draft' || ev?.status === 'returned'
+
+  // Mirrors backend authorization exactly (services/evaluations.py, incl. the
+  // _same_employee guard: two unset employee_ids must never compare equal —
+  // a freshly invited profile with no employee_id linked must not appear to
+  // "match" a subject whose manager_id also happens to be unset).
+  //   score/submit          -> _require_evaluator: super_admin or the assigned evaluator (NOT hr_admin)
+  //   approve/return (submitted)     -> the subject's manager (emp_manager_id) or super_admin
+  //   approve/return (dept_approved) -> role 'md' or super_admin
+  //   finalize/return (md_approved)  -> role 'hr_admin' or super_admin
+  const sameEmployee = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a === b
+  const isEvaluator = !!me && !!ev && (me.is_super_admin || sameEmployee(me.employee_id, ev.evaluator_id))
+  const isDeptApprover = !!me && !!ev && (me.is_super_admin || sameEmployee(me.employee_id, ev.emp_manager_id))
+  const isMd = !!me && (me.is_super_admin || me.roles.includes('md'))
+  const isHr = !!me && (me.is_super_admin || me.roles.includes('hr_admin'))
+  const canEditNow = editable && isEvaluator
 
   const categories = useMemo(() => {
     const map = new Map<number, { name: string; items: EvalDetail['items'] }>()
@@ -97,7 +114,7 @@ export default function EvaluationDetail() {
                   <span className="text-slate-600">{it.item_name}</span>
                   <select
                     className="border rounded px-2 py-1 w-20 disabled:bg-slate-100"
-                    disabled={!editable}
+                    disabled={!canEditNow}
                     value={scores[it.id] ?? ''}
                     onChange={(e) => setScores((s) => ({ ...s, [it.id]: Number(e.target.value) }))}
                   >
@@ -111,7 +128,7 @@ export default function EvaluationDetail() {
               className="mt-3 w-full border rounded px-2 py-1 text-sm disabled:bg-slate-100"
               placeholder="ข้อคิดเห็นเพิ่มเติม"
               rows={2}
-              disabled={!editable}
+              disabled={!canEditNow}
               value={comments[order] ?? ''}
               onChange={(e) => setComments((c) => ({ ...c, [order]: e.target.value }))}
             />
@@ -123,30 +140,48 @@ export default function EvaluationDetail() {
           <input
             type="number" min={0} max={40}
             className="border rounded px-2 py-1 w-28 disabled:bg-slate-100"
-            disabled={!editable}
+            disabled={!canEditNow}
             value={attendance}
             onChange={(e) => setAttendance(e.target.value === '' ? '' : Number(e.target.value))}
           />
         </section>
 
         <section className="flex flex-wrap gap-2">
-          {editable && (
+          {canEditNow && (
             <>
               <button onClick={save} disabled={busy} className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกคะแนน</button>
               <button onClick={() => transition('submit', 'ส่งประเมินแล้ว')} disabled={busy} className="bg-blue-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ส่งประเมิน</button>
             </>
           )}
-          {(ev.status === 'submitted' || ev.status === 'dept_approved') && (
+          {ev.status === 'submitted' && isDeptApprover && (
             <>
               <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy} className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
               <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
             </>
           )}
-          {ev.status === 'md_approved' && (
+          {ev.status === 'dept_approved' && isMd && (
+            <>
+              <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy} className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
+              <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
+            </>
+          )}
+          {ev.status === 'md_approved' && isHr && (
             <>
               <button onClick={() => transition('finalize', 'ปิดใบแล้ว')} disabled={busy} className="bg-green-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">สรุป/ปิดใบ (HR)</button>
               <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
             </>
+          )}
+          {editable && !isEvaluator && (
+            <p className="text-sm text-slate-400 self-center">รอหัวหน้างานที่ได้รับมอบหมายให้คะแนน</p>
+          )}
+          {ev.status === 'submitted' && !isDeptApprover && (
+            <p className="text-sm text-slate-400 self-center">รอผจก.แผนกอนุมัติ</p>
+          )}
+          {ev.status === 'dept_approved' && !isMd && (
+            <p className="text-sm text-slate-400 self-center">รอ MD อนุมัติ</p>
+          )}
+          {ev.status === 'md_approved' && !isHr && (
+            <p className="text-sm text-slate-400 self-center">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
           )}
         </section>
 

@@ -4,14 +4,6 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
 
-type Me = {
-  id: string
-  email: string | null
-  company_id: string | null
-  is_super_admin: boolean
-  roles: string[]
-}
-
 type Employee = {
   id: string
   emp_code: string
@@ -21,14 +13,12 @@ type Employee = {
 }
 
 export default function Dashboard() {
-  const { signOut } = useAuth()
-  const [me, setMe] = useState<Me | null>(null)
+  const { me, signOut } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiGet<Me>('/api/me').then(setMe).catch((e) => setError(String(e)))
-    apiGet<Employee[]>('/api/employees').then(setEmployees).catch(() => undefined)
+    apiGet<Employee[]>('/api/employees').then(setEmployees).catch((e) => setError(String(e)))
   }, [])
 
   const isHrAdmin = me?.roles.includes('hr_admin') || me?.is_super_admin

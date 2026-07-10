@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling ครบ (approval inbox · employee/branch · CSV import · tenant management · **self-service invite**) เสร็จ+พิสูจน์ (pytest 53/53 · browser) → เหลือแสดงปุ่มตาม role จริงในทุกหน้า + รอ HR (สูตร attendance, BARS anchors)
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling ครบ + **role-based UI ทุกหน้า** เสร็จ+พิสูจน์ (pytest 54/54 · browser เดินครบ 5 role) → เหลือรอ HR (สูตร attendance, BARS anchors) + bundle ฟอนต์ OFL
 
 ---
 
@@ -65,10 +65,19 @@
   - Frontend: เพิ่ม section "ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)" ใน `People.tsx` — ฟอร์ม invite + ตาราง users, อธิบายชัดว่าต่างจาก "พนักงาน" ยังไง (employees=ใครถูกประเมิน, users=ใครล็อกอินได้)
   - พิสูจน์: pytest 7 เคสใหม่ (`test_self_invite.py`: list เห็นเฉพาะ tenant ตัวเอง, invite+login ยืนยัน role, **เชิญข้าม tenant ไม่ได้เพราะไม่มีช่องรับ company_id เลย**, RBAC, กัน mint super_admin, กัน cross-tenant employee_id) + browser จริง (login hr_admin→invite manager→login ผู้ถูกเชิญจริงผ่าน curl ยืนยัน company_id/role ถูกต้อง). **pytest 53/53**
 
+- **Role-based UI ทุกหน้า เสร็จ+พิสูจน์** →
+  - **🔒 พบ+ปิดช่องโหว่จริงระหว่างทำ (ไม่ใช่แค่ UI polish):** `services/evaluations.py` เทียบ `actor_emp == ev["emp_manager_id"]` แบบ Python ตรง ๆ — Python's `None == None` คืน `True` (ต่างจาก SQL ที่ `NULL = NULL` เป็น unknown/false เสมอ) ทำให้ผู้ใช้ที่ยังไม่ผูก `employee_id` (เช่นเพิ่ง invite ใหม่) อาจอนุมัติใบของพนักงานที่ยังไม่มี `manager_id` ได้ทั้งที่ไม่ควรมีสิทธิ์ **แก้ด้วย `_same_employee(a, b)` helper** (คืน False ถ้าฝั่งใดฝั่งหนึ่งเป็น None) ใช้แทนทุกจุดเทียบ actor_emp ในไฟล์ (4 จุด: create, _require_evaluator, approve, return_to_draft) + regression test `test_unlinked_profile_cannot_approve_managerless_employee`
+  - `GET /api/me` เพิ่ม `employee_id` (lookup จาก profiles) — เป็นกุญแจให้ frontend เช็คสิทธิ์แบบเป๊ะ (ไม่ใช่แค่ role) ว่า "ฉันคือ evaluator/ผจก.แผนกของใบนี้จริงไหม"
+  - `AuthContext` ยกระดับให้ fetch+เก็บ `me` ส่วนกลาง (แยก `meLoading` ออกจาก `loading` ของ session กันเช็คสิทธิ์ก่อน `me` โหลดเสร็จ) ทุกหน้าดึงจาก context เดียวกัน ไม่ fetch ซ้ำ
+  - `components/RequireRole.tsx` ใหม่ — gate route `/people` (hr_admin), `/tenants`, `/tenants/:id` (super_admin) แสดง "คุณไม่มีสิทธิ์เข้าถึงหน้านี้" แทนหน้าที่พังจาก 403 กระจาย
+  - `Evaluations.tsx`: ซ่อนฟอร์ม "สร้างใบประเมิน" ทั้งหมดถ้าไม่ใช่ hr_admin/super_admin/มีลูกน้อง + กรอง dropdown พนักงานให้เหลือเฉพาะที่ตัวเองเป็นหัวหน้า (ตรงกับ backend `create()` เป๊ะ)
+  - `EvaluationDetail.tsx`: ปุ่มทุกปุ่ม (บันทึก/ส่ง/อนุมัติ/ตีกลับ/สรุปปิดใบ) โผล่เฉพาะผู้มีสิทธิ์จริงตามสถานะปัจจุบัน ไม่ใช่ทุกคนที่เห็นหน้า — ช่องกรอกคะแนนก็ disabled ถ้าไม่ใช่ evaluator; มีข้อความ "รอ...อนุมัติ" แทนที่ปุ่มให้คนที่ไม่มีสิทธิ์เห็นสถานะรอ
+  - พิสูจน์: pytest 54/54 (รวม regression ใหม่) + browser เดินครบ 5 login (employee ธรรมดา→ไม่เห็นฟอร์มสร้าง/เข้า `/people`,`/tenants` ไม่ได้; หัวหน้า→สร้าง+ให้คะแนน+submit เห็นแค่ปุ่มตัวเอง; ผจก.แผนก→เห็นปุ่มเฉพาะตอน submitted; MD→เห็นเฉพาะตอน dept_approved; HR→เห็นเฉพาะตอน md_approved) ครบวงจรจนถึง "ปิดใบแล้ว" ไม่มี console error
+
 ## 🔜 ทำต่อ (ถัดไป)
-1. แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้เป็นหลัก ไม่ได้ซ่อน UI ทุกจุด)
-2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+2. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+3. (พบระหว่างทาง ยังไม่ทำ) `GET /api/evaluations` และ `GET /api/evaluations/{id}` ไม่มีการกรอง "ใครควรเห็นใบไหน" เลย — พนักงานทั่วไปในบริษัทเดียวกัน "อ่าน" คะแนนใบของคนอื่นได้หมดถ้ารู้/เดา id (เขียน/อนุมัติถูกป้องกันครบแล้ว แต่การ "ดู" ยังกว้างกว่าที่ควร) ควรพิจารณาว่าใครควรมองเห็นใบประเมินของใครได้บ้าง
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

@@ -4,6 +4,7 @@ export type Me = {
   company_id: string | null
   is_super_admin: boolean
   roles: string[]
+  employee_id: string | null
 }
 
 export type Employee = {
@@ -107,6 +108,8 @@ export type EvalDetail = {
   id: string
   employee_id: string
   evaluator_id: string | null
+  emp_supervisor_id: string | null
+  emp_manager_id: string | null
   kind: string
   status: string
   eval_score: number | null

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '../context/AuthContext'
 import { apiGet, apiSend } from '../lib/api'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
 import { STATUS_LABEL } from '../types'
 
 export default function Evaluations() {
+  const { me } = useAuth()
   const navigate = useNavigate()
   const [evals, setEvals] = useState<EvalListItem[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -44,6 +46,16 @@ export default function Evaluations() {
 
   const empName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? id.slice(0, 8)
 
+  // Mirrors the backend's create() check exactly (services/evaluations.py):
+  // super_admin, hr_admin, or the direct supervisor of at least one employee.
+  const isHrOrAbove = !!me && (me.is_super_admin || me.roles.includes('hr_admin'))
+  const creatableEmployees = isHrOrAbove
+    ? employees
+    : me?.employee_id
+      ? employees.filter((e) => e.supervisor_id === me.employee_id)
+      : []
+  const canCreate = isHrOrAbove || creatableEmployees.length > 0
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
@@ -57,40 +69,42 @@ export default function Evaluations() {
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">สร้างใบประเมิน (หัวหน้างาน)</h2>
-          <div className="flex flex-wrap gap-2 items-end">
-            <label className="text-sm">
-              <span className="block text-slate-500">พนักงาน</span>
-              <select className="border rounded px-2 py-1 min-w-48" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-                <option value="">— เลือก —</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>{e.emp_code} · {e.full_name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="block text-slate-500">แบบฟอร์ม</span>
-              <select className="border rounded px-2 py-1 min-w-48" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-                <option value="">— เลือก —</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              <span className="block text-slate-500">ชนิด</span>
-              <select className="border rounded px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value)}>
-                <option value="annual">ประจำปี</option>
-                <option value="probation">ทดลองงาน</option>
-              </select>
-            </label>
-            <button onClick={create} disabled={busy || !employeeId || !templateId}
-              className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
-              สร้าง
-            </button>
-          </div>
-        </section>
+        {canCreate && (
+          <section className="bg-white rounded-xl shadow p-5">
+            <h2 className="font-medium mb-3 text-slate-700">สร้างใบประเมิน (หัวหน้างาน)</h2>
+            <div className="flex flex-wrap gap-2 items-end">
+              <label className="text-sm">
+                <span className="block text-slate-500">พนักงาน</span>
+                <select className="border rounded px-2 py-1 min-w-48" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+                  <option value="">— เลือก —</option>
+                  {creatableEmployees.map((e) => (
+                    <option key={e.id} value={e.id}>{e.emp_code} · {e.full_name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">แบบฟอร์ม</span>
+                <select className="border rounded px-2 py-1 min-w-48" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+                  <option value="">— เลือก —</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">ชนิด</span>
+                <select className="border rounded px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value)}>
+                  <option value="annual">ประจำปี</option>
+                  <option value="probation">ทดลองงาน</option>
+                </select>
+              </label>
+              <button onClick={create} disabled={busy || !employeeId || !templateId}
+                className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+                สร้าง
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">รายการใบประเมิน</h2>

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
+import RequireRole from './components/RequireRole'
 import Dashboard from './pages/Dashboard'
 import EvaluationDetail from './pages/EvaluationDetail'
 import Evaluations from './pages/Evaluations'
@@ -16,9 +17,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
-      <Route path="/people" element={<ProtectedRoute><People /></ProtectedRoute>} />
-      <Route path="/tenants" element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
-      <Route path="/tenants/:id" element={<ProtectedRoute><TenantDetail /></ProtectedRoute>} />
+      <Route path="/people" element={<ProtectedRoute><RequireRole anyOf={['hr_admin']}><People /></RequireRole></ProtectedRoute>} />
+      <Route path="/tenants" element={<ProtectedRoute><RequireRole anyOf={['super_admin']}><Tenants /></RequireRole></ProtectedRoute>} />
+      <Route path="/tenants/:id" element={<ProtectedRoute><RequireRole anyOf={['super_admin']}><TenantDetail /></RequireRole></ProtectedRoute>} />
       <Route path="/evaluations" element={<ProtectedRoute><Evaluations /></ProtectedRoute>} />
       <Route path="/evaluations/:id" element={<ProtectedRoute><EvaluationDetail /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />

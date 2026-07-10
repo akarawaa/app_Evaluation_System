@@ -185,6 +185,42 @@ async def test_pdf_export(api, org):
     assert r.content[:4] == b"%PDF"
 
 
+async def test_unlinked_profile_cannot_approve_managerless_employee(api, org, db):
+    """Regression: Python's `None == None` is True (unlike SQL NULL = NULL).
+    A subject with no manager_id set, evaluated by a profile with no
+    employee_id linked (e.g. org['hr'], created without one), must NOT
+    let that unlinked profile slip through the dept-manager check just
+    because both sides happen to be unset."""
+    sup_emp_id = (await db.fetchrow(
+        "select supervisor_id from employees where id=$1", uuid.UUID(org["e_emp"])
+    ))["supervisor_id"]
+
+    orphan = str(uuid.uuid4())
+    await db.execute(
+        "insert into employees (id,company_id,emp_code,full_name,level,supervisor_id,manager_id) "
+        "values ($1,$2,'ORPH','Orphan','operational',$3,null)",
+        orphan, org["cid"], sup_emp_id,
+    )
+
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]),
+                       json={"employee_id": orphan, "template_id": org["template_id"], "kind": "annual"})
+    assert r.status_code == 201, r.text
+    ev = r.json()
+    scores = [{"evaluation_item_id": it["id"], "score": 3} for it in ev["items"]]
+    await api.put(f"/api/evaluations/{ev['id']}/scores", headers=auth(org["sup"]), json={"scores": scores})
+    await api.post(f"/api/evaluations/{ev['id']}/submit", headers=auth(org["sup"]), json={})
+
+    # org["hr"] has no employee_id linked; orphan has no manager_id set.
+    # Before the fix, None == None let this succeed.
+    r = await api.post(f"/api/evaluations/{ev['id']}/approve", headers=auth(org["hr"]), json={})
+    assert r.status_code == 403
+
+    r = await api.post(f"/api/evaluations/{ev['id']}/return", headers=auth(org["hr"]), json={})
+    assert r.status_code == 403
+
+    await db.execute("delete from employees where id=$1", orphan)
+
+
 async def test_cross_tenant_cannot_see_evaluation(api, org, world):
     r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
     eid = r.json()["id"]

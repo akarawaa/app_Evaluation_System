@@ -20,13 +20,29 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/me")
-async def me(user: CurrentUser = Depends(get_current_user)) -> dict:
+async def me(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    # Own employee_id lets the frontend precisely gate evaluation actions
+    # (e.g. "am I this evaluation's evaluator?") instead of relying on role
+    # alone. super_admin isn't tied to an employee row, so skip the lookup.
+    employee_id = None
+    if not user.is_super_admin:
+        row = (
+            await session.execute(
+                text("select employee_id from profiles where id = :id"), {"id": user.id}
+            )
+        ).first()
+        employee_id = str(row[0]) if row and row[0] is not None else None
+
     return {
         "id": user.id,
         "email": user.email,
         "company_id": user.company_id,
         "is_super_admin": user.is_super_admin,
         "roles": user.roles,
+        "employee_id": employee_id,
     }
 
 
