@@ -43,6 +43,9 @@ export default function Dashboard() {
           {isHrAdmin && (
             <Link to="/people" className="text-sm text-blue-600 hover:text-blue-800">พนักงาน &amp; สาขา</Link>
           )}
+          {me?.is_super_admin && (
+            <Link to="/tenants" className="text-sm text-blue-600 hover:text-blue-800">จัดการบริษัท</Link>
+          )}
           <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
             ออกจากระบบ
           </button>

@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + approval inbox + หน้าจัดการ employee/branch + **นำเข้าพนักงานจาก CSV** เสร็จ+พิสูจน์ (pytest 35/35 · browser) → เหลือ tenant/invite UI + รอ HR (สูตร attendance, BARS anchors)
+**สเต็ปที่กำลังทำ:** Phase 1–3 + approval inbox + employee/branch admin + นำเข้า CSV + **หน้าจัดการ tenant (super_admin)** เสร็จ+พิสูจน์ (pytest 46/46 · browser) → เหลือ self-service invite (hr_admin เชิญเองในบริษัทตัวเอง) + รอ HR (สูตร attendance, BARS anchors)
 
 ---
 
@@ -51,10 +51,18 @@
   - Frontend: `apiUpload` (FormData, ไม่ตั้ง Content-Type เอง), section ใน `People.tsx` (ดาวน์โหลด template + file input + สรุปผล created/updated/linked/branches_created + ตาราง error รายแถว)
   - พิสูจน์: pytest 9 เคสใหม่ (`test_employee_import.py`: สร้าง+link+branch auto-create, idempotent re-import, partial failure ไม่ทำทั้งไฟล์ล้ม, self-reference reject, unresolved code reject, **cross-tenant link reject**, wrong header reject, RBAC) + browser จริง (อัปโหลดไฟล์จำลอง 3 แถว → 2 สร้างสำเร็จ+ผูกสาย+สร้างสาขา, 1 error แสดงเลขแถว/ข้อความถูกต้อง, ตารางอัปเดต resolve ชื่อครบ). **pytest 35/35**
 
+- **หน้าจัดการ tenant (super_admin) เสร็จ+พิสูจน์** →
+  - **Suspend มี enforcement จริง** (จุดสำคัญ — ไม่ใช่แค่ flag สวยงาม): เพิ่มเช็คใน `core/db.get_tenant_session` (จุดเดียวที่ทุก request ผ่าน) — ถ้า `company.status != 'active'` และ user ไม่ใช่ super_admin → 403 ทันที ไม่ต้องแก้ RLS policy ทุกตาราง
+  - `services/tenant_admin.py`: list/get/update-status/invite-user — เพราะ super_admin เอง `company_id` ชี้ไป platform tenant ไม่ใช่ tenant ที่กำลังจัดการ ทุก query จึง**ระบุ `company_id` (จาก path) ตรง ๆ** แทนที่จะพึ่ง RLS scope โดยนัยแบบ services อื่น
+  - Routes: `GET/POST /api/admin/tenants`, `GET /api/admin/tenants/{id}`, `PATCH /api/admin/tenants/{id}/status`, `POST /api/admin/tenants/{id}/users` (invite — role ถูกจำกัดด้วย pattern ใน schema กัน mint super_admin ผ่านช่องทางนี้)
+  - Frontend: `pages/Tenants.tsx` (list + สร้างบริษัทใหม่), `pages/TenantDetail.tsx` (ข้อมูล + ปุ่มระงับ/เปิดใช้งาน + เชิญผู้ใช้ + ตาราง users), route `/tenants`, `/tenants/:id`, ลิงก์ "จัดการบริษัท" (เฉพาะ super_admin)
+  - พิสูจน์: pytest 11 เคสใหม่ (`test_tenant_admin.py`: list/detail RBAC, **suspend บล็อกจริง + reactivate คืนสิทธิ์**, invite+login ยืนยัน role ใน JWT, กัน mint super_admin (422), กัน cross-tenant employee_id (400)) + browser จริงครบ flow (สร้าง tenant→เชิญ dept_manager→กดระงับ→**ยืนยันด้วย curl ว่า hr_admin โดน 403 จริง**→เปิดใช้งานคืน→ยืนยัน 200). **pytest 46/46**
+
 ## 🔜 ทำต่อ (ถัดไป)
-1. Polish frontend ที่เหลือ: หน้าจัดการ tenant (super_admin) + invite user flow, แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้)
-2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-3. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+1. Self-service invite: ให้ hr_admin เชิญผู้ใช้เองภายในบริษัทตัวเอง (ตอนนี้ invite ทำได้เฉพาะ super_admin ผ่าน `/api/admin/tenants/{id}/users`) — ต่อยอดจาก `services/tenant_admin.invite_user` ได้เลย แค่เปลี่ยน authorization + scope ด้วย `user.company_id`
+2. แสดงปุ่มตาม role จริงในทุกหน้า (ตอนนี้อิงสถานะ + backend 403 กันไว้เป็นหลัก ไม่ได้ซ่อน UI ทุกจุด)
+3. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+4. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

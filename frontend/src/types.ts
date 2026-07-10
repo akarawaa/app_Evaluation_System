@@ -33,6 +33,34 @@ export type ImportResult = {
   errors: ImportRowError[]
 }
 
+export type Tenant = {
+  id: string
+  name: string
+  slug: string
+  status: string
+  created_at: string
+  employee_count: number
+  user_count: number
+}
+
+export type TenantUser = {
+  id: string
+  display_name: string | null
+  employee_id: string | null
+  roles: string[]
+}
+
+export type TenantDetail = Tenant & { users: TenantUser[] }
+
+export const ROLE_LABEL: Record<string, string> = {
+  super_admin: 'ผู้ดูแลระบบ (Platform)',
+  hr_admin: 'ฝ่ายบุคคล',
+  manager: 'หัวหน้างาน',
+  dept_manager: 'ผจก.แผนก',
+  md: 'กรรมการผู้จัดการ',
+  employee: 'พนักงาน',
+}
+
 export const LEVEL_LABEL: Record<string, string> = {
   operational: 'พนักงานปฏิบัติการ',
   supervisor: 'หัวหน้างาน',

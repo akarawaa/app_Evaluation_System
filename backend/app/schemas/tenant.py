@@ -1,3 +1,6 @@
+from typing import Optional
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -12,3 +15,14 @@ class TenantOut(BaseModel):
     company: dict
     hr_user_id: str
     templates_cloned: int
+
+
+class TenantStatusUpdate(BaseModel):
+    status: str = Field(pattern=r"^(active|suspended)$")
+
+
+class InviteUserIn(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+    role: str = Field(pattern=r"^(hr_admin|manager|dept_manager|md|employee)$")
+    employee_id: Optional[UUID] = None

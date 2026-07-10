@@ -8,7 +8,7 @@ the PostgREST/Supabase path — so a missing WHERE clause can never leak tenants
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -32,4 +32,19 @@ async def get_tenant_session(
                 {"claims": json.dumps(user.claims)},
             )
             await session.execute(text("set local role authenticated"))
+
+            # A suspended tenant's own members are locked out at this single
+            # choke point (super_admin, who isn't tied to a customer tenant,
+            # is exempt). Enforced here rather than per-RLS-policy so
+            # suspend/reactivate needs no schema changes to any table.
+            if not user.is_super_admin and user.company_id:
+                row = (
+                    await session.execute(
+                        text("select status from companies where id = :cid"),
+                        {"cid": user.company_id},
+                    )
+                ).first()
+                if row is None or row[0] != "active":
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, "This company's account is suspended")
+
             yield session
