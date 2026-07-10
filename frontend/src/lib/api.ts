@@ -37,6 +37,16 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   URL.revokeObjectURL(url)
 }
 
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  // No Content-Type header: the browser sets multipart/form-data with the
+  // correct boundary itself when the body is a FormData instance.
+  const res = await fetch(`${base}${path}`, { method: 'POST', headers: await authHeaders(), body: form })
+  if (!res.ok) throw new Error(await errText(res))
+  return (await res.json()) as T
+}
+
 export async function apiSend<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${base}${path}`, {
     method,

@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
+python-multipart   # required for file upload (employee CSV import)
 
 # DB access (primary): SQLAlchemy async + asyncpg
 sqlalchemy[asyncio]

@@ -23,6 +23,16 @@ export type Employee = {
 
 export type Branch = { id: string; name: string }
 
+export type ImportRowError = { row: number; emp_code: string | null; message: string }
+
+export type ImportResult = {
+  created: number
+  updated: number
+  linked: number
+  branches_created: number
+  errors: ImportRowError[]
+}
+
 export const LEVEL_LABEL: Record<string, string> = {
   operational: 'พนักงานปฏิบัติการ',
   supervisor: 'หัวหน้างาน',

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { apiGet, apiSend } from '../lib/api'
-import type { Branch, Employee } from '../types'
+import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
+import type { Branch, Employee, ImportResult } from '../types'
 import { LEVEL_LABEL } from '../types'
 
 const emptyForm = {
@@ -22,6 +22,10 @@ export default function People() {
 
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [importResult, setImportResult] = useState<ImportResult | null>(null)
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = () => Promise.all([
     apiGet<Employee[]>('/api/employees').then(setEmployees),
@@ -82,6 +86,23 @@ export default function People() {
 
   const supervisorCandidates = employees.filter((e) => e.level === 'supervisor' && e.id !== editingId)
 
+  const downloadTemplate = () =>
+    apiDownload('/api/employees/import-template', 'employee-import-template.csv').catch((e) => setError(String(e)))
+
+  const runImport = async (file: File) => {
+    setImporting(true); setError(null); setMsg(null); setImportResult(null)
+    try {
+      const result = await apiUpload<ImportResult>('/api/employees/import', file)
+      setImportResult(result)
+      await load()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
@@ -92,6 +113,63 @@ export default function People() {
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-1 text-slate-700">นำเข้าพนักงานจากไฟล์</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            สำหรับตอนขึ้นระบบครั้งแรก หรือเพิ่ม/แก้ไขพนักงานจำนวนมากพร้อมกัน — ดาวน์โหลดเทมเพลต กรอกข้อมูลใน Excel
+            แล้วอัปโหลดกลับ ระบุ "รหัสหัวหน้างาน"/"รหัสผจก.แผนก" เป็นรหัสพนักงานของอีกแถวในไฟล์เดียวกันได้เลย
+            (นำเข้าซ้ำด้วยรหัสพนักงานเดิมจะเป็นการแก้ไข ไม่ใช่สร้างซ้ำ)
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={downloadTemplate} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+              ↓ ดาวน์โหลดเทมเพลต (CSV)
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              disabled={importing}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) runImport(f) }}
+              className="text-sm"
+            />
+            {importing && <span className="text-sm text-slate-400">กำลังนำเข้า…</span>}
+          </div>
+
+          {importResult && (
+            <div className="mt-4 border-t pt-4">
+              <div className="flex flex-wrap gap-4 text-sm mb-2">
+                <span className="text-green-700">สร้างใหม่ {importResult.created} คน</span>
+                <span className="text-blue-700">แก้ไข {importResult.updated} คน</span>
+                <span className="text-slate-600">ผูกสายบังคับบัญชา {importResult.linked} รายการ</span>
+                {importResult.branches_created > 0 && (
+                  <span className="text-slate-600">สร้างสาขาใหม่ {importResult.branches_created} สาขา</span>
+                )}
+                {importResult.errors.length > 0 && (
+                  <span className="text-red-600 font-medium">ผิดพลาด {importResult.errors.length} แถว</span>
+                )}
+              </div>
+              {importResult.errors.length > 0 && (
+                <table className="w-full text-xs mt-2">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b">
+                      <th className="py-1 pr-2 w-16">แถว</th><th className="pr-2 w-32">รหัสพนักงาน</th><th>ข้อผิดพลาด</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importResult.errors.map((err, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="py-1 pr-2">{err.row}</td>
+                        <td className="pr-2">{err.emp_code ?? '—'}</td>
+                        <td className="text-red-600">{err.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </section>
 
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">สาขา</h2>
