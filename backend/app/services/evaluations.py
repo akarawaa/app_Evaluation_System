@@ -76,7 +76,7 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     ev = await _load(session, eval_id)
     items = (await session.execute(text(
         "select i.id, i.category_order, i.category_name, i.item_order, i.item_name, "
-        "i.weight, s.score "
+        "i.weight, i.desc_1, i.desc_2, i.desc_3, i.desc_4, i.desc_5, s.score "
         "from evaluation_items i "
         "left join evaluation_scores s on s.evaluation_item_id = i.id "
         "where i.evaluation_id = :id order by i.category_order, i.item_order"

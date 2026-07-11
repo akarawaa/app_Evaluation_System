@@ -109,21 +109,47 @@ export default function EvaluationDetail() {
         {categories.map(([order, cat]) => (
           <section key={order} className="bg-white rounded-xl shadow p-5">
             <h3 className="font-medium text-slate-700 mb-2">{order}. {cat.name}</h3>
-            <div className="space-y-1.5">
-              {cat.items.map((it) => (
-                <div key={it.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-slate-600">{it.item_name}</span>
-                  <select
-                    className="border rounded px-2 py-1 w-20 disabled:bg-slate-100"
-                    disabled={!canEditNow}
-                    value={scores[it.id] ?? ''}
-                    onChange={(e) => setScores((s) => ({ ...s, [it.id]: Number(e.target.value) }))}
-                  >
-                    <option value="">—</option>
-                    {SCORE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {cat.items.map((it) => {
+                const anchors = [it.desc_5, it.desc_4, it.desc_3, it.desc_2, it.desc_1] // level 5..1
+                const hasAnchors = anchors.some((a) => a)
+                const sel = scores[it.id]
+                return (
+                  <div key={it.id} className="text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-600">{it.item_name}</span>
+                      <select
+                        className="border rounded px-2 py-1 w-20 disabled:bg-slate-100"
+                        disabled={!canEditNow}
+                        value={scores[it.id] ?? ''}
+                        onChange={(e) => setScores((s) => ({ ...s, [it.id]: Number(e.target.value) }))}
+                      >
+                        <option value="">—</option>
+                        {SCORE_OPTIONS.map((n) => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    {hasAnchors && (
+                      <details className="mt-1 group">
+                        <summary className="text-xs text-blue-600 cursor-pointer select-none list-none">
+                          เกณฑ์การให้คะแนน (BARS) ▾
+                        </summary>
+                        <ul className="mt-1 space-y-0.5 pl-1">
+                          {anchors.map((a, i) => {
+                            const level = 5 - i
+                            const active = sel != null && (Math.floor(sel) === level || Math.ceil(sel) === level)
+                            return (
+                              <li key={level} className={`flex gap-2 text-xs rounded px-1 py-0.5 ${active ? 'bg-blue-50 text-blue-800' : 'text-slate-500'}`}>
+                                <span className="font-medium tabular-nums">{level}</span>
+                                <span>{a ?? '—'}</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                )
+              })}
             </div>
             <textarea
               className="mt-3 w-full border rounded px-2 py-1 text-sm disabled:bg-slate-100"

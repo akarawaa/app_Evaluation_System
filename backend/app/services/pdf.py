@@ -109,7 +109,16 @@ def build_evaluation_pdf(ev: dict) -> bytes:
         flow.append(Paragraph(f"{order}. {cat['name']}", h2))
         rows = [[Paragraph("หัวข้อ", small), Paragraph("คะแนน", small)]]
         for it in sorted(cat["items"], key=lambda x: x["item_order"]):
-            rows.append([Paragraph(it["item_name"], normal), Paragraph(_fmt(it.get("score")), normal)])
+            # the printed record shows the BARS anchor for the score given, so
+            # a score is self-explanatory without the separate rating guide.
+            cell = [Paragraph(it["item_name"], normal)]
+            score = it.get("score")
+            if score is not None:
+                lvl = max(1, min(5, int(round(float(score)))))
+                anchor = it.get(f"desc_{lvl}")
+                if anchor:
+                    cell.append(Paragraph(f"ระดับ {lvl}: {anchor}", small))
+            rows.append([cell, Paragraph(_fmt(score), normal)])
         ct = Table(rows, colWidths=[15 * cm, 2.5 * cm])
         ct.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),

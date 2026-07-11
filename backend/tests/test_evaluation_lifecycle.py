@@ -76,6 +76,8 @@ async def test_full_lifecycle(api, org):
     ev = r.json()
     eid = ev["id"]
     assert len(ev["items"]) == 28
+    # BARS anchors are snapshotted onto each item (desc_1..5 filled by seed)
+    assert all(ev["items"][0][f"desc_{n}"] for n in range(1, 6))
 
     # supervisor scores all items = 4, attendance 30
     scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]

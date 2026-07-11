@@ -97,6 +97,11 @@ export type EvalItem = {
   item_name: string
   weight: number
   score: number | null
+  desc_1: string | null
+  desc_2: string | null
+  desc_3: string | null
+  desc_4: string | null
+  desc_5: string | null
 }
 
 export type EvalComment = { category_order: number; comment: string | null }

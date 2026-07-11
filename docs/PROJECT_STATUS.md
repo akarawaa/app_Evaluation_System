@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + **read-visibility policy + role GM/MD** เสร็จ+พิสูจน์ (pytest 56/56 · browser) → เหลือรอ HR (สูตร attendance, BARS anchors) + bundle ฟอนต์ OFL
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + **BARS anchors ครบ 42 ตัวชี้วัด** เสร็จ+พิสูจน์ (pytest 56/56 · browser · PDF) → เหลือรอ HR (สูตร attendance) + bundle ฟอนต์ OFL
 
 ---
 
@@ -79,9 +79,16 @@
   - **Role `gm` (General Manager) ใหม่** — `0014_gm_role.sql`; สิทธิเทียบเท่า MD ทุกที่ที่เช็ค md → `_is_md_or_gm()` (approve/return ชั้น MD, inbox, visibility). approval record ยังใช้ step='md' (stage เดียวกัน), actor_id บันทึกว่าใครทำ. Frontend: `INVITE_ROLES` + `ROLE_LABEL` เพิ่ม gm, ป้าย "รออนุมัติ (GM/MD)", isMd รวม gm
   - พิสูจน์: pytest **56/56** (+`test_gm_approves_at_md_stage`, +`test_read_visibility`: subject/chain/HR/GM/MD เห็น, คนนอกสาย list ว่าง+detail 404+pdf 404) + browser จริง (login GM→เห็น inbox "รออนุมัติ (GM/MD)"→อนุมัติได้→สถานะ MD อนุมัติ; login คนนอกสาย→list "ยังไม่มีใบประเมิน"+เข้า detail ตรง id ได้ 404)
 
+- **BARS anchors (desc_1..5) เสร็จ+พิสูจน์** →
+  - **เนื้อหา BARS 42 ตัวชี้วัด × 5 ระดับ** เขียนเป็นชุดตั้งต้น (HR ปรับถ้อยคำได้) ต่อท้าย `supabase/seed.sql` — UPDATE คีย์ด้วย (category_order, item_order) ลง master template (company_id null) ทั้ง operational+supervisor. Verify: 70/70 master items มี desc ครบ
+  - **`0015_bars_snapshot.sql`**: เพิ่ม `desc_1..5` เข้า `evaluation_items` (snapshot) + แก้ `app.snapshot_evaluation_items` ให้ copy anchors มาตอนสร้างใบ (ใบเก่าเป็น NULL) — เพราะ desc อยู่บน template แต่การให้คะแนนอ่านจาก snapshot
+  - `get_detail` ดึง `desc_1..5` ไปด้วย; `EvalItem` type + `EvaluationDetail.tsx` แสดง `<details>` "เกณฑ์การให้คะแนน (BARS)" พับเก็บได้ต่อ item (5→1) + ไฮไลต์ระดับที่เลือก (score .5 คร่อม 2 ระดับ)
+  - `pdf.py` เพิ่มคำบรรยาย "ระดับ N: <anchor>" ใต้ชื่อตัวชี้วัดที่ให้คะแนน → ใบพิมพ์อธิบายตัวเองได้
+  - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
+
 ## 🔜 ทำต่อ (ถัดไป)
 1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-2. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
+2. รอ HR: **สูตร attendance (เต็ม 40)**, เกณฑ์ probation ต่อ checkpoint (BARS anchors ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
