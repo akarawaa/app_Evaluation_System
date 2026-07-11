@@ -3,9 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { apiGet, apiSend } from '../lib/api'
 import type { TenantDetail as TenantDetailType } from '../types'
-import { ROLE_LABEL } from '../types'
-
-const inviteRoles = ['hr_admin', 'manager', 'dept_manager', 'md', 'employee']
+import { INVITE_ROLES, ROLE_LABEL } from '../types'
 
 const emptyInvite = { email: '', password: '', role: 'manager' }
 
@@ -106,7 +104,7 @@ export default function TenantDetail() {
               <span className="block text-slate-500 mb-0.5">บทบาท</span>
               <select className="border rounded px-2 py-1 w-full" value={invite.role}
                 onChange={(e) => setInvite((f) => ({ ...f, role: e.target.value }))}>
-                {inviteRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </label>
           </div>

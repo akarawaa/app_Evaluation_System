@@ -43,7 +43,8 @@ export default function EvaluationDetail() {
   const sameEmployee = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a === b
   const isEvaluator = !!me && !!ev && (me.is_super_admin || sameEmployee(me.employee_id, ev.evaluator_id))
   const isDeptApprover = !!me && !!ev && (me.is_super_admin || sameEmployee(me.employee_id, ev.emp_manager_id))
-  const isMd = !!me && (me.is_super_admin || me.roles.includes('md'))
+  // GM/MD are interchangeable at the top approval stage.
+  const isMd = !!me && (me.is_super_admin || me.roles.includes('md') || me.roles.includes('gm'))
   const isHr = !!me && (me.is_super_admin || me.roles.includes('hr_admin'))
   const canEditNow = editable && isEvaluator
 
@@ -178,7 +179,7 @@ export default function EvaluationDetail() {
             <p className="text-sm text-slate-400 self-center">รอผจก.แผนกอนุมัติ</p>
           )}
           {ev.status === 'dept_approved' && !isMd && (
-            <p className="text-sm text-slate-400 self-center">รอ MD อนุมัติ</p>
+            <p className="text-sm text-slate-400 self-center">รอ GM/MD อนุมัติ</p>
           )}
           {ev.status === 'md_approved' && !isHr && (
             <p className="text-sm text-slate-400 self-center">รอฝ่ายบุคคลสรุป/ปิดใบ</p>

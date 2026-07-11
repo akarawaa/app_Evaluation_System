@@ -45,6 +45,7 @@ async def org(db):
             "sup": await make("sup", "manager", s_emp),
             "dept": await make("dept", "dept_manager", d_emp),
             "md": await make("md", "md"),
+            "gm": await make("gm", "gm"),
             "hr": await make("hr", "hr_admin"),
             "emp": await make("emp", "employee", e_emp),
         }
@@ -227,3 +228,61 @@ async def test_cross_tenant_cannot_see_evaluation(api, org, world):
     # a user from a different tenant must not see it
     r = await api.get(f"/api/evaluations/{eid}", headers=auth(world["A"]["token"]))
     assert r.status_code == 404
+
+
+async def test_gm_approves_at_md_stage(api, org):
+    """GM is interchangeable with MD at the MD/GM approval stage."""
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+    ev = r.json()
+    eid = ev["id"]
+    scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]
+    await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]), json={"scores": scores})
+    await api.post(f"/api/evaluations/{eid}/submit", headers=auth(org["sup"]), json={})
+    await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["dept"]), json={})
+
+    # GM's inbox shows it at the MD stage, and GM can approve it
+    gm_inbox = _ids((await api.get("/api/evaluations/inbox", headers=auth(org["gm"]))).json())
+    assert gm_inbox.get(eid) == "md_approve"
+    r = await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["gm"]), json={})
+    assert r.status_code == 200 and r.json()["status"] == "md_approved"
+
+
+async def test_read_visibility(api, org, db):
+    """subject sees own; org chain sees subordinates'; HR/GM/MD see all;
+    an unrelated same-tenant employee sees nothing of it."""
+    # an unrelated employee + login in the same tenant
+    other_emp = str(uuid.uuid4())
+    await db.execute("insert into employees (id,company_id,emp_code,full_name,level) "
+                     "values ($1,$2,'OTH','Unrelated','operational')", other_emp, org["cid"])
+    async with httpx.AsyncClient(timeout=20) as c:
+        email = f"other-{uuid.uuid4().hex[:8]}@test.local"
+        uid = await _create_user(c, email)
+        await db.execute("insert into profiles (id,company_id,employee_id,display_name) values ($1,$2,$3,'other')",
+                         uid, org["cid"], other_emp)
+        await db.execute("insert into user_roles (profile_id,role_id,company_id) select $1,id,$2 from roles where code='employee'",
+                         uid, org["cid"])
+        other_token = await _token(c, email)
+
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+    eid = r.json()["id"]
+
+    async def ids_for(token):
+        return {e["id"] for e in (await api.get("/api/evaluations", headers=auth(token))).json()}
+
+    # subject (the evaluated employee) sees own
+    assert eid in await ids_for(org["emp"])
+    assert (await api.get(f"/api/evaluations/{eid}", headers=auth(org["emp"]))).status_code == 200
+    # supervisor + dept manager (org chain) see it
+    assert eid in await ids_for(org["sup"])
+    assert eid in await ids_for(org["dept"])
+    # HR / GM / MD see everything
+    assert eid in await ids_for(org["hr"])
+    assert eid in await ids_for(org["gm"])
+    assert eid in await ids_for(org["md"])
+    # an unrelated same-tenant employee sees nothing of it
+    assert eid not in await ids_for(other_token)
+    assert (await api.get(f"/api/evaluations/{eid}", headers=auth(other_token))).status_code == 404
+    assert (await api.get(f"/api/evaluations/{eid}/pdf", headers=auth(other_token))).status_code == 404
+
+    await db.execute("delete from auth.users where id=$1", uuid.UUID(uid))
+    await db.execute("delete from employees where id=$1", other_emp)

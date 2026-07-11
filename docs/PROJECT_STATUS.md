@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-06
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling ครบ + **role-based UI ทุกหน้า** เสร็จ+พิสูจน์ (pytest 54/54 · browser เดินครบ 5 role) → เหลือรอ HR (สูตร attendance, BARS anchors) + bundle ฟอนต์ OFL
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + **read-visibility policy + role GM/MD** เสร็จ+พิสูจน์ (pytest 56/56 · browser) → เหลือรอ HR (สูตร attendance, BARS anchors) + bundle ฟอนต์ OFL
 
 ---
 
@@ -74,10 +74,14 @@
   - `EvaluationDetail.tsx`: ปุ่มทุกปุ่ม (บันทึก/ส่ง/อนุมัติ/ตีกลับ/สรุปปิดใบ) โผล่เฉพาะผู้มีสิทธิ์จริงตามสถานะปัจจุบัน ไม่ใช่ทุกคนที่เห็นหน้า — ช่องกรอกคะแนนก็ disabled ถ้าไม่ใช่ evaluator; มีข้อความ "รอ...อนุมัติ" แทนที่ปุ่มให้คนที่ไม่มีสิทธิ์เห็นสถานะรอ
   - พิสูจน์: pytest 54/54 (รวม regression ใหม่) + browser เดินครบ 5 login (employee ธรรมดา→ไม่เห็นฟอร์มสร้าง/เข้า `/people`,`/tenants` ไม่ได้; หัวหน้า→สร้าง+ให้คะแนน+submit เห็นแค่ปุ่มตัวเอง; ผจก.แผนก→เห็นปุ่มเฉพาะตอน submitted; MD→เห็นเฉพาะตอน dept_approved; HR→เห็นเฉพาะตอน md_approved) ครบวงจรจนถึง "ปิดใบแล้ว" ไม่มี console error
 
+- **Read visibility + role GM/MD เสร็จ+พิสูจน์** →
+  - **นโยบายการมองเห็นใบประเมิน (ปิดช่องโหว่ที่บันทึกไว้รอบก่อน):** ผู้ถูกประเมินเห็นเฉพาะของตัวเอง · สายบังคับบัญชา (supervisor_id/manager_id ของ subject) เห็นของลูกน้อง · HR + GM/MD เห็นทั้ง tenant · คนอื่นในบริษัทเดียวกันที่ไม่เกี่ยวข้อง → 404 (ไม่รั่วแม้แต่การมองเห็น). กรองใน `list_all` (SQL WHERE) + `_load_viewable` (GET detail/pdf → 404 ถ้าไม่มีสิทธิ์). `GET /api/me` เพิ่ม employee_id ไปแล้วรอบก่อน ใช้เช็คฝั่ง UI
+  - **Role `gm` (General Manager) ใหม่** — `0014_gm_role.sql`; สิทธิเทียบเท่า MD ทุกที่ที่เช็ค md → `_is_md_or_gm()` (approve/return ชั้น MD, inbox, visibility). approval record ยังใช้ step='md' (stage เดียวกัน), actor_id บันทึกว่าใครทำ. Frontend: `INVITE_ROLES` + `ROLE_LABEL` เพิ่ม gm, ป้าย "รออนุมัติ (GM/MD)", isMd รวม gm
+  - พิสูจน์: pytest **56/56** (+`test_gm_approves_at_md_stage`, +`test_read_visibility`: subject/chain/HR/GM/MD เห็น, คนนอกสาย list ว่าง+detail 404+pdf 404) + browser จริง (login GM→เห็น inbox "รออนุมัติ (GM/MD)"→อนุมัติได้→สถานะ MD อนุมัติ; login คนนอกสาย→list "ยังไม่มีใบประเมิน"+เข้า detail ตรง id ได้ 404)
+
 ## 🔜 ทำต่อ (ถัดไป)
 1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
 2. รอ HR: สูตร attendance (เต็ม 40), เนื้อหา `desc_1..5`, เกณฑ์ probation ต่อ checkpoint
-3. (พบระหว่างทาง ยังไม่ทำ) `GET /api/evaluations` และ `GET /api/evaluations/{id}` ไม่มีการกรอง "ใครควรเห็นใบไหน" เลย — พนักงานทั่วไปในบริษัทเดียวกัน "อ่าน" คะแนนใบของคนอื่นได้หมดถ้ารู้/เดา id (เขียน/อนุมัติถูกป้องกันครบแล้ว แต่การ "ดู" ยังกว้างกว่าที่ควร) ควรพิจารณาว่าใครควรมองเห็นใบประเมินของใครได้บ้าง
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

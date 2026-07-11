@@ -33,6 +33,28 @@ def _same_employee(a, b) -> bool:
     return a is not None and b is not None and a == b
 
 
+def _is_md_or_gm(user: CurrentUser) -> bool:
+    """MD and GM are interchangeable at the top approval stage (GM/MD)."""
+    return "md" in user.roles or "gm" in user.roles
+
+
+def _sees_all_evaluations(user: CurrentUser) -> bool:
+    """Who may read every evaluation in the tenant: HR (oversight) and the
+    GM/MD top approvers (they act on all of them). Everyone else is limited to
+    their own evaluation (as the subject) or their direct reports'."""
+    return user.is_super_admin or "hr_admin" in user.roles or _is_md_or_gm(user)
+
+
+def _can_view(user: CurrentUser, actor_emp, ev: dict) -> bool:
+    if _sees_all_evaluations(user):
+        return True
+    return (
+        _same_employee(actor_emp, ev["employee_id"])       # the subject themselves
+        or _same_employee(actor_emp, ev["emp_supervisor_id"])  # direct supervisor
+        or _same_employee(actor_emp, ev["emp_manager_id"])     # dept manager
+    )
+
+
 async def _load(session: AsyncSession, eval_id: str) -> dict:
     row = (
         await session.execute(
@@ -78,7 +100,8 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     return ev
 
 
-async def get_report_context(session: AsyncSession, eval_id: str) -> dict:
+async def get_report_context(session: AsyncSession, user: CurrentUser, eval_id: str) -> dict:
+    await _load_viewable(session, user, eval_id)
     ev = await get_detail(session, eval_id)
     emp = (await session.execute(text(
         "select emp_code, full_name, position from employees where id = :id"
@@ -97,12 +120,34 @@ async def get_report_context(session: AsyncSession, eval_id: str) -> dict:
     return ev
 
 
-async def list_all(session: AsyncSession) -> list[dict]:
+async def _load_viewable(session: AsyncSession, user: CurrentUser, eval_id: str) -> dict:
+    """Load an evaluation only if the caller is allowed to read it; otherwise
+    404 (never reveal that an id exists to someone who may not see it)."""
+    ev = await _load(session, eval_id)
+    actor_emp = await _actor_employee_id(session, user.id)
+    if not _can_view(user, actor_emp, ev):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "evaluation not found")
+    return ev
+
+
+async def view_detail(session: AsyncSession, user: CurrentUser, eval_id: str) -> dict:
+    await _load_viewable(session, user, eval_id)
+    return await get_detail(session, eval_id)
+
+
+async def list_all(session: AsyncSession, user: CurrentUser) -> list[dict]:
+    see_all = _sees_all_evaluations(user)
+    actor_emp = None if see_all else await _actor_employee_id(session, user.id)
     rows = (await session.execute(text(
-        "select id, employee_id, evaluator_id, kind, probation_checkpoint, status, "
-        "eval_score, eval_max, total_score, percentage, created_at "
-        "from evaluations order by created_at desc"
-    ))).mappings().all()
+        "select ev.id, ev.employee_id, ev.evaluator_id, ev.kind, ev.probation_checkpoint, ev.status, "
+        "ev.eval_score, ev.eval_max, ev.total_score, ev.percentage, ev.created_at "
+        "from evaluations ev join employees emp on emp.id = ev.employee_id "
+        "where :see_all "                                  # HR / GM / MD / super_admin
+        "   or emp.id = :actor_emp "                       # the subject themselves
+        "   or emp.supervisor_id = :actor_emp "            # direct supervisor
+        "   or emp.manager_id = :actor_emp "               # dept manager
+        "order by ev.created_at desc"
+    ), {"see_all": see_all, "actor_emp": actor_emp})).mappings().all()
     return [dict(r) for r in rows]
 
 
@@ -115,7 +160,7 @@ async def list_inbox(session: AsyncSession, user: CurrentUser) -> list[dict]:
       finalize     -> user holds role 'hr_admin', status md_approved
     """
     actor_emp = await _actor_employee_id(session, user.id)
-    is_md = user.is_super_admin or "md" in user.roles
+    is_md = user.is_super_admin or _is_md_or_gm(user)
     is_hr = user.is_super_admin or "hr_admin" in user.roles
     rows = (await session.execute(text(
         "select ev.id, ev.employee_id, emp.emp_code, emp.full_name, ev.kind, ev.status, "
@@ -264,8 +309,8 @@ async def approve(session: AsyncSession, user: CurrentUser, eval_id: str, commen
             raise HTTPException(status.HTTP_403_FORBIDDEN, "only the department manager may approve now")
         new_status, step = "dept_approved", "dept_manager"
     elif ev["status"] == "dept_approved":
-        if not (user.is_super_admin or "md" in user.roles):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "only the MD may approve now")
+        if not (user.is_super_admin or _is_md_or_gm(user)):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "only the GM/MD may approve now")
         new_status, step = "md_approved", "md"
     else:
         raise HTTPException(status.HTTP_409_CONFLICT,
@@ -291,7 +336,7 @@ async def return_to_draft(session: AsyncSession, user: CurrentUser, eval_id: str
         authorized = user.is_super_admin or _same_employee(actor_emp, ev["emp_manager_id"])
         step = "dept_manager"
     elif ev["status"] == "dept_approved":
-        authorized = user.is_super_admin or "md" in user.roles
+        authorized = user.is_super_admin or _is_md_or_gm(user)
         step = "md"
     elif ev["status"] == "md_approved":
         authorized = user.is_super_admin or "hr_admin" in user.roles

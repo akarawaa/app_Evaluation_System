@@ -58,9 +58,13 @@ export const ROLE_LABEL: Record<string, string> = {
   hr_admin: 'ฝ่ายบุคคล',
   manager: 'หัวหน้างาน',
   dept_manager: 'ผจก.แผนก',
-  md: 'กรรมการผู้จัดการ',
+  md: 'กรรมการผู้จัดการ (MD)',
+  gm: 'ผู้จัดการทั่วไป (GM)',
   employee: 'พนักงาน',
 }
+
+// GM and MD are interchangeable at the top approval stage.
+export const INVITE_ROLES = ['hr_admin', 'manager', 'dept_manager', 'md', 'gm', 'employee']
 
 export const LEVEL_LABEL: Record<string, string> = {
   operational: 'พนักงานปฏิบัติการ',
@@ -139,7 +143,7 @@ export type InboxItem = {
 export const ACTION_LABEL: Record<InboxAction, string> = {
   score: 'รอให้คะแนน',
   dept_approve: 'รออนุมัติ (ผจก.แผนก)',
-  md_approve: 'รออนุมัติ (MD)',
+  md_approve: 'รออนุมัติ (GM/MD)',
   finalize: 'รอสรุป/ปิดใบ (HR)',
 }
 

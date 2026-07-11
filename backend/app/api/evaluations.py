@@ -19,8 +19,11 @@ router = APIRouter(prefix="/api/evaluations")
 
 
 @router.get("")
-async def list_evaluations(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    return await svc.list_all(session)
+async def list_evaluations(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    return await svc.list_all(session, user)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -45,9 +48,10 @@ async def inbox(
 @router.get("/{eval_id}")
 async def get_evaluation(
     eval_id: str,
+    user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await svc.get_detail(session, eval_id)
+    return await svc.view_detail(session, user, eval_id)
 
 
 @router.get("/{eval_id}/pdf")
@@ -56,7 +60,7 @@ async def evaluation_pdf(
     user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> Response:
-    ctx = await svc.get_report_context(session, eval_id)
+    ctx = await svc.get_report_context(session, user, eval_id)
     pdf_bytes = build_evaluation_pdf(ctx)
     await write_audit(session, company_id=user.company_id, actor_id=user.id,
                       action="evaluation_exported", entity_type="evaluations", entity_id=eval_id)

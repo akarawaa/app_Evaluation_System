@@ -3,14 +3,13 @@ import { Link } from 'react-router-dom'
 
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
 import type { Branch, Employee, ImportResult, TenantUser } from '../types'
-import { LEVEL_LABEL, ROLE_LABEL } from '../types'
+import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL } from '../types'
 
 const emptyForm = {
   emp_code: '', full_name: '', position: '', level: 'operational',
   branch_id: '', supervisor_id: '', manager_id: '',
 }
 
-const inviteRoles = ['hr_admin', 'manager', 'dept_manager', 'md', 'employee']
 const emptyInvite = { email: '', password: '', role: 'manager' }
 
 export default function People() {
@@ -340,7 +339,7 @@ export default function People() {
               <span className="block text-slate-500 mb-0.5">บทบาท</span>
               <select className="border rounded px-2 py-1 w-full" value={invite.role}
                 onChange={(e) => setInvite((f) => ({ ...f, role: e.target.value }))}>
-                {inviteRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </label>
           </div>

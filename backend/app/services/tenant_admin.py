@@ -19,7 +19,7 @@ from app.services.audit import write_audit
 from app.services.auth_admin import create_auth_user
 
 PLATFORM_SLUG = "__platform__"
-INVITABLE_ROLES = {"hr_admin", "manager", "dept_manager", "md", "employee"}
+INVITABLE_ROLES = {"hr_admin", "manager", "dept_manager", "md", "gm", "employee"}
 
 
 async def list_tenants(session: AsyncSession) -> list[dict]:
