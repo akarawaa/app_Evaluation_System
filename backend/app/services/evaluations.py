@@ -33,6 +33,17 @@ def _same_employee(a, b) -> bool:
     return a is not None and b is not None and a == b
 
 
+ATTENDANCE_FULL = 40
+
+
+def compute_attendance_score(sick_days: int, personal_days: int, late_count: int, absent_days: int) -> float:
+    """Default starting formula (HR may tune the deductions later; this is a
+    starting point, not a fixed policy): 40 points, minus 4/day absent,
+    1/day personal leave, 0.5/day sick leave, 1/occurrence late. Floored at 0."""
+    score = ATTENDANCE_FULL - 4 * absent_days - personal_days - 0.5 * sick_days - late_count
+    return max(0.0, score)
+
+
 def _is_md_or_gm(user: CurrentUser) -> bool:
     """MD and GM are interchangeable at the top approval stage (GM/MD)."""
     return "md" in user.roles or "gm" in user.roles
@@ -86,7 +97,8 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
         "order by category_order"
     ), {"id": eval_id})).mappings().all()
     attendance = (await session.execute(text(
-        "select sick_days, personal_days, late_count, late_minutes, absent_days, attendance_score "
+        "select sick_days, personal_days, late_count, late_minutes, absent_days, "
+        "attendance_score, attendance_score_overridden "
         "from evaluation_attendance where evaluation_id = :id"
     ), {"id": eval_id})).mappings().first()
     approvals = (await session.execute(text(
@@ -259,23 +271,56 @@ async def save_scores(session: AsyncSession, user: CurrentUser, eval_id: str, pa
             "on conflict (evaluation_id, category_order) do update set comment = excluded.comment"
         ), {"e": eval_id, "c": user.company_id, "o": cm.category_order, "m": cm.comment})
 
-    if payload.attendance is not None:
-        a = payload.attendance
-        await session.execute(text(
-            "insert into evaluation_attendance "
-            "(evaluation_id, company_id, sick_days, personal_days, late_count, late_minutes, absent_days, attendance_score) "
-            "values (:e,:c,:sd,:pd,:lc,:lm,:ad,:ascore) "
-            "on conflict (evaluation_id) do update set sick_days=excluded.sick_days, "
-            "personal_days=excluded.personal_days, late_count=excluded.late_count, "
-            "late_minutes=excluded.late_minutes, absent_days=excluded.absent_days, "
-            "attendance_score=excluded.attendance_score, updated_at=now()"
-        ), {"e": eval_id, "c": user.company_id, "sd": a.sick_days, "pd": a.personal_days,
-            "lc": a.late_count, "lm": a.late_minutes, "ad": a.absent_days, "ascore": a.attendance_score})
-
     await session.execute(text("select app.recompute_evaluation_totals(:id)"), {"id": eval_id})
     await write_audit(session, company_id=user.company_id, actor_id=user.id,
                       action="score_saved", entity_type="evaluations", entity_id=eval_id,
                       after={"scores": len(payload.scores)})
+    return await get_detail(session, eval_id)
+
+
+async def set_attendance(session: AsyncSession, user: CurrentUser, eval_id: str, payload) -> dict:
+    """HR-only: record raw attendance facts for the period. The evaluator's
+    save_scores no longer accepts attendance (kept read-only there) — HR owns
+    this data so a supervisor can't silently overwrite what HR entered."""
+    ev = await _load(session, eval_id)
+    if ev["status"] == "finalized":
+        raise HTTPException(status.HTTP_409_CONFLICT, "ปิดใบแล้ว แก้ไขข้อมูลการมา-ลาไม่ได้")
+
+    existing = (await session.execute(text(
+        "select attendance_score, attendance_score_overridden from evaluation_attendance where evaluation_id = :id"
+    ), {"id": eval_id})).mappings().first()
+
+    computed = compute_attendance_score(payload.sick_days, payload.personal_days,
+                                         payload.late_count, payload.absent_days)
+    if payload.clear_override:
+        score, overridden = computed, False
+    elif payload.attendance_score is not None:
+        score, overridden = payload.attendance_score, True
+    elif existing and existing["attendance_score_overridden"]:
+        # a previous manual override exists and this request doesn't touch it —
+        # re-editing the raw figures must not silently recompute over it.
+        score, overridden = existing["attendance_score"], True
+    else:
+        score, overridden = computed, False
+
+    await session.execute(text(
+        "insert into evaluation_attendance "
+        "(evaluation_id, company_id, sick_days, personal_days, late_count, late_minutes, absent_days, "
+        " attendance_score, attendance_score_overridden) "
+        "values (:e,:c,:sd,:pd,:lc,:lm,:ad,:ascore,:ov) "
+        "on conflict (evaluation_id) do update set sick_days=excluded.sick_days, "
+        "personal_days=excluded.personal_days, late_count=excluded.late_count, "
+        "late_minutes=excluded.late_minutes, absent_days=excluded.absent_days, "
+        "attendance_score=excluded.attendance_score, "
+        "attendance_score_overridden=excluded.attendance_score_overridden, updated_at=now()"
+    ), {"e": eval_id, "c": user.company_id, "sd": payload.sick_days, "pd": payload.personal_days,
+        "lc": payload.late_count, "lm": payload.late_minutes, "ad": payload.absent_days,
+        "ascore": score, "ov": overridden})
+
+    await session.execute(text("select app.recompute_evaluation_totals(:id)"), {"id": eval_id})
+    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+                      action="attendance_updated", entity_type="evaluations", entity_id=eval_id,
+                      after={"attendance_score": score, "overridden": overridden})
     return await get_detail(session, eval_id)
 
 

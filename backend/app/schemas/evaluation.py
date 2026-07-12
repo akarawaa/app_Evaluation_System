@@ -32,19 +32,24 @@ class CommentIn(BaseModel):
     comment: Optional[str] = None
 
 
-class AttendanceIn(BaseModel):
-    sick_days: int = 0
-    personal_days: int = 0
-    late_count: int = 0
-    late_minutes: int = 0
-    absent_days: int = 0
-    attendance_score: Optional[float] = None
-
-
 class ScoresUpdate(BaseModel):
     scores: list[ScoreIn] = []
     comments: list[CommentIn] = []
-    attendance: Optional[AttendanceIn] = None
+
+
+class AttendanceSet(BaseModel):
+    """HR-only: raw attendance facts for the period. The score is normally
+    computed from these (see services.evaluations.compute_attendance_score);
+    attendance_score lets HR override the computed value with a manual one.
+    clear_override discards a previous manual override and goes back to the
+    formula (recomputed from the figures in this same request)."""
+    sick_days: int = Field(default=0, ge=0)
+    personal_days: int = Field(default=0, ge=0)
+    late_count: int = Field(default=0, ge=0)
+    late_minutes: int = Field(default=0, ge=0)
+    absent_days: int = Field(default=0, ge=0)
+    attendance_score: Optional[float] = Field(default=None, ge=0, le=40)
+    clear_override: bool = False
 
 
 class ApproveIn(BaseModel):

@@ -1,16 +1,19 @@
 """Evaluation lifecycle API (Phase 2, Step 2). All DB access via the tenant
 session (RLS-scoped); state transitions + authorization live in the service."""
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
-from app.core.security import CurrentUser, get_current_user
+from app.core.security import CurrentUser, get_current_user, require_roles
+from app.schemas.attendance_import import AttendanceImportResult
 from app.schemas.evaluation import (
     ApproveIn,
+    AttendanceSet,
     EvaluationCreate,
     FinalizeIn,
     ScoresUpdate,
 )
+from app.services import attendance_import as attendance_import_svc
 from app.services import evaluations as svc
 from app.services.audit import write_audit
 from app.services.pdf import build_evaluation_pdf
@@ -43,6 +46,29 @@ async def inbox(
     """Evaluations awaiting the current user's action. Registered before
     /{eval_id} so 'inbox' isn't swallowed as a path parameter."""
     return await svc.list_inbox(session, user)
+
+
+@router.get("/attendance-import-template")
+async def attendance_import_template(
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+) -> Response:
+    """Literal path — registered before /{eval_id} so it isn't swallowed as
+    a path parameter (same convention as /inbox)."""
+    return Response(
+        content=attendance_import_svc.build_template_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="attendance-import-template.csv"'},
+    )
+
+
+@router.post("/attendance-import", response_model=AttendanceImportResult)
+async def attendance_import(
+    file: UploadFile,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    raw = await file.read()
+    return await attendance_import_svc.import_attendance(session, user, raw)
 
 
 @router.get("/{eval_id}")
@@ -79,6 +105,16 @@ async def save_scores(
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
     return await svc.save_scores(session, user, eval_id, payload)
+
+
+@router.put("/{eval_id}/attendance")
+async def set_attendance(
+    eval_id: str,
+    payload: AttendanceSet,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await svc.set_attendance(session, user, eval_id, payload)
 
 
 @router.post("/{eval_id}/submit")

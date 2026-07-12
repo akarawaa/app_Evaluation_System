@@ -79,13 +79,18 @@ async def test_full_lifecycle(api, org):
     # BARS anchors are snapshotted onto each item (desc_1..5 filled by seed)
     assert all(ev["items"][0][f"desc_{n}"] for n in range(1, 6))
 
-    # supervisor scores all items = 4, attendance 30
+    # supervisor scores all items = 4; HR records attendance (override 30, since
+    # attendance is HR-owned data, not something the evaluator sets)
     scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]
     r = await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]),
-                      json={"scores": scores, "attendance": {"attendance_score": 30}})
+                      json={"scores": scores})
     assert r.status_code == 200, r.text
     d = r.json()
     assert float(d["eval_score"]) == 112 and float(d["eval_max"]) == 140
+
+    r = await api.put(f"/api/evaluations/{eid}/attendance", headers=auth(org["hr"]),
+                      json={"attendance_score": 30})
+    assert r.status_code == 200, r.text
 
     # someone who is not the evaluator cannot score
     r = await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["emp"]), json={"scores": []})
@@ -180,8 +185,9 @@ async def test_pdf_export(api, org):
     ev = r.json()
     eid = ev["id"]
     scores = [{"evaluation_item_id": it["id"], "score": 4} for it in ev["items"]]
-    await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]),
-                  json={"scores": scores, "attendance": {"attendance_score": 30}})
+    await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]), json={"scores": scores})
+    await api.put(f"/api/evaluations/{eid}/attendance", headers=auth(org["hr"]),
+                  json={"attendance_score": 30})
     r = await api.get(f"/api/evaluations/{eid}/pdf", headers=auth(org["sup"]))
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/pdf")

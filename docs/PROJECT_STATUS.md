@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + **BARS anchors ครบ 42 ตัวชี้วัด** เสร็จ+พิสูจน์ (pytest 56/56 · browser · PDF) → กำลังทำ **ระบบ attendance ให้ HR กรอกข้อมูลดิบ + auto-calc + import จำนวนมาก** (เริ่มแล้ว ยังไม่เสร็จ)
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + **ระบบ attendance ให้ HR กรอกข้อมูลดิบ + auto-calc + bulk import** เสร็จ+พิสูจน์ (pytest 66/66 · browser) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance + bundle ฟอนต์ OFL
 
 ---
 
@@ -87,11 +87,20 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. **กำลังทำ: ระบบ attendance ให้ HR กรอกข้อมูลดิบก่อน** (ตัดสินใจแล้ว: auto-calc จากสูตรตั้งต้น + HR override ได้, HR เท่านั้นที่กรอก/นำเข้า, รองรับ bulk import แบบเดียวกับ employee CSV import)
-   - `0016_attendance_override.sql` สร้างแล้ว (เพิ่ม `attendance_score_overridden`) — **ยังไม่ได้รัน db reset**
-   - ยังไม่ทำ: ฟังก์ชัน compute คะแนนจากข้อมูลดิบ (สูตรตั้งต้นที่เสนอไว้ ยังไม่ได้ยืนยันตัวเลขกับ user: 40 − 4×ขาด − 1×ลากิจ − 0.5×ลาป่วย − 1×ครั้งสาย, floor 0), endpoint HR-only แยกจาก `save_scores` เดิม, ทำหน้า scoring ของหัวหน้าให้เห็น attendance แบบ read-only, bulk CSV import (mirror `employee_import.py`), pytest, browser verify
-2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-3. รอ HR: ยืนยันตัวเลขสูตร attendance, เกณฑ์ probation ต่อ checkpoint (BARS anchors ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
+1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+2. รอ HR: **ยืนยันตัวเลขสูตร attendance** (ใช้ค่าเริ่มต้นไปก่อน — ดูหัวข้อด้านล่าง), เกณฑ์ probation ต่อ checkpoint, BARS anchors (ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
+3. (ไอเดียถัดไป ยังไม่เริ่ม) ให้ HR ปรับตัวเลขสัมประสิทธิ์สูตร attendance เองผ่านหน้า UI แทนการ hardcode ในโค้ด ถ้า HR อยากทดลองสูตรหลายแบบ
+
+## ✅ ทำไปแล้ว (ต่อ)
+
+- **ระบบ attendance: HR กรอกข้อมูลดิบ + auto-calc + override + bulk import เสร็จ+พิสูจน์** →
+  - **เปลี่ยนสถาปัตยกรรม**: attendance เดิมให้หัวหน้าพิมพ์คะแนน 0–40 เองใน `save_scores` — เปลี่ยนเป็น **HR เป็นเจ้าของข้อมูล** หัวหน้าเห็นได้อย่างเดียว (read-only) ป้องกันหัวหน้าพิมพ์ทับข้อมูลที่ HR กรอกไว้
+  - `0016_attendance_override.sql`: เพิ่ม `attendance_score_overridden` ใน `evaluation_attendance` — เก็บ "คะแนนเดียว + flag" ไม่แยก computed_score ต่างหาก (ออกแบบให้ง่ายที่สุดที่ยังตอบโจทย์ได้)
+  - `services/evaluations.compute_attendance_score`: **สูตรตั้งต้น (ค่าเริ่มต้น ปรับได้ รอ HR ยืนยัน)**: 40 − 4×วันขาด − 1×วันลากิจ − 0.5×วันลาป่วย − 1×ครั้งมาสาย, floor ที่ 0
+  - `PUT /api/evaluations/{id}/attendance` (HR-only ผ่าน `require_roles`) — บันทึกข้อมูลดิบ + คำนวณคะแนนอัตโนมัติ, หรือ HR ระบุ `attendance_score` เพื่อ override เอง — **override อยู่รอด** แม้แก้ข้อมูลดิบซ้ำในภายหลัง (ไม่คำนวณทับโดยไม่ตั้งใจ) จนกว่าจะส่ง `clear_override: true` เพื่อกลับไปใช้สูตร. บล็อกแก้ไขหลัง `finalized` (409)
+  - **Bulk import**: `services/attendance_import.py` (mirror `employee_import.py`) — จับคู่แถวด้วย emp_code กับใบประเมินที่ยังไม่ปิดของพนักงานคนนั้น (ต้องมีอยู่แล้ว 1 ใบเท่านั้น ไม่งั้น error ต่อแถว), **เคารพ override เดิม** (ข้ามแถวที่ HR ปรับเองไว้แล้ว นับใน `skipped_overridden`), SAVEPOINT ต่อแถว. Routes: `GET /api/evaluations/attendance-import-template`, `POST /api/evaluations/attendance-import` (ทั้งคู่ literal path ประกาศก่อน `/{eval_id}` กัน path collision เหมือน `/inbox`)
+  - Frontend: `EvaluationDetail.tsx` — หัวหน้าเห็นคะแนน+รายละเอียดการมา-ลาแบบ read-only เท่านั้น (ไม่มีช่องกรอกอีกต่อไป); ฟอร์มแก้ไข (ลาป่วย/ลากิจ/สาย/ขาดงาน + ช่อง override) แสดงเฉพาะ HR และเฉพาะตอนยังไม่ finalized. `People.tsx` เพิ่ม section นำเข้า attendance จากไฟล์ (ดาวน์โหลดเทมเพลต + อัปโหลด + สรุปผล updated/skipped_overridden/errors)
+  - พิสูจน์: pytest 10 เคสใหม่ (`test_attendance.py`: หัวหน้าตั้งค่าไม่ได้ (403), auto-compute ถูกสูตร, override อยู่รอดการแก้ข้อมูลดิบซ้ำ + clear_override กลับสูตรได้, ยอดรวมคำนวณถูก, บล็อกหลัง finalize (409), bulk import อัปเดตถูกใบ, bulk import ข้ามใบที่ override ไว้, bulk import แถวไม่พบใบประเมิน = error, RBAC) + แก้ 2 เคสเดิมที่เคยส่ง attendance ผ่าน `save_scores` ให้ใช้ endpoint ใหม่แทน — **pytest 66/66** + browser จริง (login หัวหน้า → เห็น "คะแนน: — / 40" อย่างเดียว ไม่มีช่องกรอก; login HR → กรอกลาป่วย 1 + สาย 2 ครั้ง → บันทึก → คะแนนคำนวณเป็น 37.5 ถูกต้อง ยอดรวมอัปเดตทันที)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

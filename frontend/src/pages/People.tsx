@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
-import type { Branch, Employee, ImportResult, TenantUser } from '../types'
+import type { AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
 import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL } from '../types'
 
 const emptyForm = {
@@ -31,6 +31,10 @@ export default function People() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [attImportResult, setAttImportResult] = useState<AttendanceImportResult | null>(null)
+  const [attImporting, setAttImporting] = useState(false)
+  const attFileInputRef = useRef<HTMLInputElement>(null)
 
   const load = () => Promise.all([
     apiGet<Employee[]>('/api/employees').then(setEmployees),
@@ -109,6 +113,22 @@ export default function People() {
     }
   }
 
+  const downloadAttTemplate = () =>
+    apiDownload('/api/evaluations/attendance-import-template', 'attendance-import-template.csv').catch((e) => setError(String(e)))
+
+  const runAttImport = async (file: File) => {
+    setAttImporting(true); setError(null); setMsg(null); setAttImportResult(null)
+    try {
+      const result = await apiUpload<AttendanceImportResult>('/api/evaluations/attendance-import', file)
+      setAttImportResult(result)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setAttImporting(false)
+      if (attFileInputRef.current) attFileInputRef.current.value = ''
+    }
+  }
+
   const sendInvite = () => {
     if (!invite.email.trim() || invite.password.length < 8) return
     run(async () => {
@@ -172,6 +192,60 @@ export default function People() {
                   </thead>
                   <tbody>
                     {importResult.errors.map((err, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="py-1 pr-2">{err.row}</td>
+                        <td className="pr-2">{err.emp_code ?? '—'}</td>
+                        <td className="text-red-600">{err.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-1 text-slate-700">นำเข้าข้อมูลการมา-ลาจากไฟล์</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            สำหรับ HR กรอกข้อมูลลาป่วย/ลากิจ/มาสาย/ขาดงานให้พนักงานหลายคนพร้อมกัน — ระบบคำนวณคะแนนการมา-ลา (เต็ม 40) ให้อัตโนมัติ
+            แต่ละแถวจะจับคู่กับใบประเมินที่ยังไม่ปิดของพนักงานคนนั้น (ต้องมีใบประเมินอยู่แล้ว 1 ใบ) ถ้าใบไหนถูก HR ปรับคะแนนเองไว้แล้วจะไม่ถูกเขียนทับ
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={downloadAttTemplate} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+              ↓ ดาวน์โหลดเทมเพลต (CSV)
+            </button>
+            <input
+              ref={attFileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              disabled={attImporting}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) runAttImport(f) }}
+              className="text-sm"
+            />
+            {attImporting && <span className="text-sm text-slate-400">กำลังนำเข้า…</span>}
+          </div>
+
+          {attImportResult && (
+            <div className="mt-4 border-t pt-4">
+              <div className="flex flex-wrap gap-4 text-sm mb-2">
+                <span className="text-blue-700">อัปเดตแล้ว {attImportResult.updated} ใบ</span>
+                {attImportResult.skipped_overridden > 0 && (
+                  <span className="text-slate-600">ข้าม (HR ปรับเองไว้แล้ว) {attImportResult.skipped_overridden} ใบ</span>
+                )}
+                {attImportResult.errors.length > 0 && (
+                  <span className="text-red-600 font-medium">ผิดพลาด {attImportResult.errors.length} แถว</span>
+                )}
+              </div>
+              {attImportResult.errors.length > 0 && (
+                <table className="w-full text-xs mt-2">
+                  <thead>
+                    <tr className="text-left text-slate-500 border-b">
+                      <th className="py-1 pr-2 w-16">แถว</th><th className="pr-2 w-32">รหัสพนักงาน</th><th>ข้อผิดพลาด</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attImportResult.errors.map((err, i) => (
                       <tr key={i} className="border-b last:border-0">
                         <td className="py-1 pr-2">{err.row}</td>
                         <td className="pr-2">{err.emp_code ?? '—'}</td>

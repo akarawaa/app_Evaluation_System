@@ -15,7 +15,8 @@ export default function EvaluationDetail() {
   const [ev, setEv] = useState<EvalDetail | null>(null)
   const [scores, setScores] = useState<Record<string, number>>({})
   const [comments, setComments] = useState<Record<number, string>>({})
-  const [attendance, setAttendance] = useState<number | ''>('')
+  const [att, setAtt] = useState({ sick_days: 0, personal_days: 0, late_count: 0, late_minutes: 0, absent_days: 0 })
+  const [attOverride, setAttOverride] = useState<number | ''>('')
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -25,7 +26,11 @@ export default function EvaluationDetail() {
       setEv(d)
       setScores(Object.fromEntries(d.items.filter((i) => i.score != null).map((i) => [i.id, Number(i.score)])))
       setComments(Object.fromEntries(d.comments.map((c) => [c.category_order, c.comment ?? ''])))
-      setAttendance(d.attendance?.attendance_score ?? '')
+      if (d.attendance) {
+        const { sick_days, personal_days, late_count, late_minutes, absent_days } = d.attendance
+        setAtt({ sick_days, personal_days, late_count, late_minutes, absent_days })
+        setAttOverride(d.attendance.attendance_score_overridden ? d.attendance.attendance_score ?? '' : '')
+      }
     }).catch((e) => setError(String(e)))
 
   useEffect(() => { load() }, [id])
@@ -68,8 +73,14 @@ export default function EvaluationDetail() {
     act(() => apiSend('PUT', `/api/evaluations/${id}/scores`, {
       scores: Object.entries(scores).map(([evaluation_item_id, score]) => ({ evaluation_item_id, score })),
       comments: Object.entries(comments).map(([category_order, comment]) => ({ category_order: Number(category_order), comment })),
-      attendance: attendance === '' ? null : { attendance_score: Number(attendance) },
     }), 'บันทึกคะแนนแล้ว')
+
+  const saveAttendance = () =>
+    act(() => apiSend('PUT', `/api/evaluations/${id}/attendance`, {
+      ...att,
+      attendance_score: attOverride === '' ? null : Number(attOverride),
+      clear_override: attOverride === '',
+    }), 'บันทึกข้อมูลการมา-ลาแล้ว')
 
   const transition = (path: string, okMsg: string) =>
     act(() => apiSend('POST', `/api/evaluations/${id}/${path}`, {}), okMsg)
@@ -164,13 +175,55 @@ export default function EvaluationDetail() {
 
         <section className="bg-white rounded-xl shadow p-5 text-sm">
           <h3 className="font-medium text-slate-700 mb-2">คะแนนการมา-ลา (เต็ม 40)</h3>
-          <input
-            type="number" min={0} max={40}
-            className="border rounded px-2 py-1 w-28 disabled:bg-slate-100"
-            disabled={!canEditNow}
-            value={attendance}
-            onChange={(e) => setAttendance(e.target.value === '' ? '' : Number(e.target.value))}
-          />
+          <p className="text-slate-600">
+            คะแนน: <b>{ev.attendance?.attendance_score ?? '—'}</b> / 40
+            {ev.attendance?.attendance_score_overridden && (
+              <span className="ml-2 text-xs text-amber-600">(ปรับโดย HR)</span>
+            )}
+          </p>
+          {ev.attendance && (
+            <p className="text-xs text-slate-400 mt-1">
+              ลาป่วย {ev.attendance.sick_days} วัน · ลากิจ {ev.attendance.personal_days} วัน ·
+              {' '}สาย {ev.attendance.late_count} ครั้ง ({ev.attendance.late_minutes} นาที) ·
+              {' '}ขาดงาน {ev.attendance.absent_days} วัน
+            </p>
+          )}
+          <p className="text-xs text-slate-400 mt-1">ข้อมูลนี้กรอกโดยฝ่ายบุคคล หัวหน้างานดูได้อย่างเดียว</p>
+
+          {isHr && ev.status !== 'finalized' && (
+            <div className="mt-4 border-t pt-3 space-y-2">
+              <p className="text-xs font-medium text-slate-500">แก้ไขข้อมูลการมา-ลา (ฝ่ายบุคคล)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <label className="text-xs text-slate-500">ลาป่วย (วัน)
+                  <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
+                    value={att.sick_days} onChange={(e) => setAtt((a) => ({ ...a, sick_days: Number(e.target.value) }))} />
+                </label>
+                <label className="text-xs text-slate-500">ลากิจ (วัน)
+                  <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
+                    value={att.personal_days} onChange={(e) => setAtt((a) => ({ ...a, personal_days: Number(e.target.value) }))} />
+                </label>
+                <label className="text-xs text-slate-500">สาย (ครั้ง)
+                  <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
+                    value={att.late_count} onChange={(e) => setAtt((a) => ({ ...a, late_count: Number(e.target.value) }))} />
+                </label>
+                <label className="text-xs text-slate-500">สาย (นาทีรวม)
+                  <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
+                    value={att.late_minutes} onChange={(e) => setAtt((a) => ({ ...a, late_minutes: Number(e.target.value) }))} />
+                </label>
+                <label className="text-xs text-slate-500">ขาดงาน (วัน)
+                  <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
+                    value={att.absent_days} onChange={(e) => setAtt((a) => ({ ...a, absent_days: Number(e.target.value) }))} />
+                </label>
+              </div>
+              <label className="text-xs text-slate-500 block">
+                ปรับคะแนนเอง (เว้นว่าง = คำนวณอัตโนมัติจากข้อมูลด้านบน)
+                <input type="number" min={0} max={40} className="border rounded px-2 py-1 w-28 ml-2"
+                  value={attOverride} onChange={(e) => setAttOverride(e.target.value === '' ? '' : Number(e.target.value))} />
+              </label>
+              <button onClick={saveAttendance} disabled={busy}
+                className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกข้อมูลการมา-ลา</button>
+            </div>
+          )}
         </section>
 
         <section className="flex flex-wrap gap-2">

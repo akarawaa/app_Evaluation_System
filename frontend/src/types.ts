@@ -113,6 +113,16 @@ export type EvalApproval = {
   decided_at: string
 }
 
+export type AttendanceDetail = {
+  sick_days: number
+  personal_days: number
+  late_count: number
+  late_minutes: number
+  absent_days: number
+  attendance_score: number | null
+  attendance_score_overridden: boolean
+}
+
 export type EvalDetail = {
   id: string
   employee_id: string
@@ -128,8 +138,16 @@ export type EvalDetail = {
   percentage: number | null
   items: EvalItem[]
   comments: EvalComment[]
-  attendance: { attendance_score: number | null } | null
+  attendance: AttendanceDetail | null
   approvals: EvalApproval[]
+}
+
+export type AttendanceImportRowError = { row: number; emp_code: string | null; message: string }
+
+export type AttendanceImportResult = {
+  updated: number
+  skipped_overridden: number
+  errors: AttendanceImportRowError[]
 }
 
 export type InboxAction = 'score' | 'dept_approve' | 'md_approve' | 'finalize'
