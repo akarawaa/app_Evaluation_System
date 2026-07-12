@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + **ระบบ attendance ให้ HR กรอกข้อมูลดิบ + auto-calc + bulk import** เสร็จ+พิสูจน์ (pytest 66/66 · browser) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance + bundle ฟอนต์ OFL
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + **bundle ฟอนต์ OFL (Sarabun) สำหรับ PDF** เสร็จ+พิสูจน์ (pytest 66/66 · browser · PDF จริง) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance/ถ้อยคำ BARS
 
 ---
 
@@ -87,9 +87,10 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+1. review pip-audit runtime advisories เมื่อมี fix (starlette/urllib3 รอ upstream ปล่อยเวอร์ชันแพตช์)
 2. รอ HR: **ยืนยันตัวเลขสูตร attendance** (ใช้ค่าเริ่มต้นไปก่อน — ดูหัวข้อด้านล่าง), เกณฑ์ probation ต่อ checkpoint, BARS anchors (ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
 3. (ไอเดียถัดไป ยังไม่เริ่ม) ให้ HR ปรับตัวเลขสัมประสิทธิ์สูตร attendance เองผ่านหน้า UI แทนการ hardcode ในโค้ด ถ้า HR อยากทดลองสูตรหลายแบบ
+4. (ไอเดียที่คุยกัน ยังไม่เริ่ม) export คะแนนผลประเมินเป็น Excel สำหรับเอาไปประมวลผลต่อ — ดูหัวข้อ "export Excel" ด้านล่างสำหรับแนวทาง
 
 ## ✅ ทำไปแล้ว (ต่อ)
 
@@ -100,7 +101,13 @@
   - `PUT /api/evaluations/{id}/attendance` (HR-only ผ่าน `require_roles`) — บันทึกข้อมูลดิบ + คำนวณคะแนนอัตโนมัติ, หรือ HR ระบุ `attendance_score` เพื่อ override เอง — **override อยู่รอด** แม้แก้ข้อมูลดิบซ้ำในภายหลัง (ไม่คำนวณทับโดยไม่ตั้งใจ) จนกว่าจะส่ง `clear_override: true` เพื่อกลับไปใช้สูตร. บล็อกแก้ไขหลัง `finalized` (409)
   - **Bulk import**: `services/attendance_import.py` (mirror `employee_import.py`) — จับคู่แถวด้วย emp_code กับใบประเมินที่ยังไม่ปิดของพนักงานคนนั้น (ต้องมีอยู่แล้ว 1 ใบเท่านั้น ไม่งั้น error ต่อแถว), **เคารพ override เดิม** (ข้ามแถวที่ HR ปรับเองไว้แล้ว นับใน `skipped_overridden`), SAVEPOINT ต่อแถว. Routes: `GET /api/evaluations/attendance-import-template`, `POST /api/evaluations/attendance-import` (ทั้งคู่ literal path ประกาศก่อน `/{eval_id}` กัน path collision เหมือน `/inbox`)
   - Frontend: `EvaluationDetail.tsx` — หัวหน้าเห็นคะแนน+รายละเอียดการมา-ลาแบบ read-only เท่านั้น (ไม่มีช่องกรอกอีกต่อไป); ฟอร์มแก้ไข (ลาป่วย/ลากิจ/สาย/ขาดงาน + ช่อง override) แสดงเฉพาะ HR และเฉพาะตอนยังไม่ finalized. `People.tsx` เพิ่ม section นำเข้า attendance จากไฟล์ (ดาวน์โหลดเทมเพลต + อัปโหลด + สรุปผล updated/skipped_overridden/errors)
-  - พิสูจน์: pytest 10 เคสใหม่ (`test_attendance.py`: หัวหน้าตั้งค่าไม่ได้ (403), auto-compute ถูกสูตร, override อยู่รอดการแก้ข้อมูลดิบซ้ำ + clear_override กลับสูตรได้, ยอดรวมคำนวณถูก, บล็อกหลัง finalize (409), bulk import อัปเดตถูกใบ, bulk import ข้ามใบที่ override ไว้, bulk import แถวไม่พบใบประเมิน = error, RBAC) + แก้ 2 เคสเดิมที่เคยส่ง attendance ผ่าน `save_scores` ให้ใช้ endpoint ใหม่แทน — **pytest 66/66** + browser จริง (login หัวหน้า → เห็น "คะแนน: — / 40" อย่างเดียว ไม่มีช่องกรอก; login HR → กรอกลาป่วย 1 + สาย 2 ครั้ง → บันทึก → คะแนนคำนวณเป็น 37.5 ถูกต้อง ยอดรวมอัปเดตทันที)
+  - พิสูจน์: pytest 10 เคสใหม่ (`test_attendance.py`: หัวหน้าตั้งค่าไม่ได้ (403), auto-compute ถูกสูตร, override อยู่รอดการแก้ข้อมูลดิบซ้ำ + clear_override กลับสูตรได้, ยอดรวมคำนวณถูก, บล็อกหลัง finalize (409), bulk import อัปเดตถูกใบ, bulk import ข้ามใบที่ override ไว้, bulk import แถวไม่พบใบประเมิน = error, RBAC) + แก้ 2 เคสเดิมที่เคยส่ง attendance ผ่าน `save_scores` ให้ใช้ endpoint ใหม่แทน — pytest 66/66 + browser จริง (login หัวหน้า → เห็น "คะแนน: — / 40" อย่างเดียว ไม่มีช่องกรอก; login HR → กรอกลาป่วย 1 + สาย 2 ครั้ง → บันทึก → คะแนนคำนวณเป็น 37.5 ถูกต้อง ยอดรวมอัปเดตทันที)
+
+- **Bundle ฟอนต์ OFL (Sarabun) สำหรับ PDF เสร็จ+พิสูจน์** →
+  - เดิม `pdf.py` พึ่งฟอนต์ที่ติดตั้งในเครื่อง (Leelawadee UI บน Windows / Sarabun-Tlwg บน Linux) — ถ้า deploy บน container ที่ไม่มีฟอนต์ไทยติดตั้งจะ export PDF ไม่ได้เลย (`RuntimeError: No Thai TTF font found`)
+  - ดาวน์โหลด `Sarabun-Regular.ttf` + `OFL.txt` (สัญญาอนุญาต) จาก Google Fonts (`google/fonts` repo, OFL license) ไปไว้ที่ `backend/app/assets/fonts/` — เป็นไฟล์ในโปรเจกต์ ไม่ต้องพึ่งฟอนต์ระบบอีกต่อไป
+  - `pdf.py`: เพิ่ม `_BUNDLED_FONT` (path แบบ relative ผ่าน `Path(__file__)` ใช้ได้ทุก deployment) เป็นลำดับที่ 2 ใน `_FONT_CANDIDATES` (รองจาก `PDF_FONT_PATH` env ที่ยัง override ได้ถ้าต้องการฟอนต์อื่น) ก่อนฟอนต์ระบบ Windows/Linux ที่เหลือไว้เป็น fallback สุดท้าย
+  - พิสูจน์: เช็คว่า `pdfmetrics.getFont` โหลดจากไฟล์ที่ bundle จริง (ไม่ใช่ฟอนต์ระบบ) + สร้างใบประเมินจริงผ่าน API แล้ว render PDF เป็นภาพ (ใช้ PyMuPDF ชั่วคราวเพื่อตรวจสอบเท่านั้น ไม่ได้เพิ่มเป็น dependency ถาวร) — ตัวอักษรไทย สระ วรรณยุกต์ถูกต้องครบถ้วน, pytest 66/66 ผ่าน
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

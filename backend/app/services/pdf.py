@@ -1,10 +1,13 @@
 """Evaluation PDF export (Phase 3) using ReportLab + a Thai TTF font.
 
-Font path is configurable via PDF_FONT_PATH; falls back to common Windows/Linux
-Thai fonts. Bundle an OFL font (e.g. Sarabun) for production deployments.
+Ships with a bundled OFL font (Sarabun) under app/assets/fonts so PDF export
+works the same on any deployment target without relying on OS-installed
+fonts. PDF_FONT_PATH can still override it (e.g. to use a licensed font);
+the OS-specific paths remain as a last-resort fallback.
 """
 import io
 import os
+from pathlib import Path
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -23,8 +26,11 @@ from reportlab.platypus import (
 _FONT = "ThaiFont"
 _registered = False
 
+_BUNDLED_FONT = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Sarabun-Regular.ttf"
+
 _FONT_CANDIDATES = [
     os.environ.get("PDF_FONT_PATH"),
+    str(_BUNDLED_FONT),
     r"C:\Windows\Fonts\LeelawUI.ttf",
     r"C:\Windows\Fonts\leelawad.ttf",
     r"C:\Windows\Fonts\tahoma.ttf",
