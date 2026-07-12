@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
-import { apiGet, apiSend } from '../lib/api'
+import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
 import { STATUS_LABEL } from '../types'
 
@@ -61,6 +61,9 @@ export default function Evaluations() {
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">ใบประเมินผล</h1>
         <nav className="flex items-center gap-4">
+          <button
+            onClick={() => apiDownload('/api/evaluations/export', 'evaluations-export.xlsx').catch((e) => setError(String(e)))}
+            className="text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด Excel</button>
           <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
           <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
         </nav>

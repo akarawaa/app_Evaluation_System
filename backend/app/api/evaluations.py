@@ -16,6 +16,7 @@ from app.schemas.evaluation import (
 from app.services import attendance_import as attendance_import_svc
 from app.services import evaluations as svc
 from app.services.audit import write_audit
+from app.services.excel_export import build_evaluations_excel
 from app.services.pdf import build_evaluation_pdf
 
 router = APIRouter(prefix="/api/evaluations")
@@ -46,6 +47,23 @@ async def inbox(
     """Evaluations awaiting the current user's action. Registered before
     /{eval_id} so 'inbox' isn't swallowed as a path parameter."""
     return await svc.list_inbox(session, user)
+
+
+@router.get("/export")
+async def export_evaluations(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> Response:
+    """Excel export of every evaluation the caller can see (same visibility
+    policy as list_all). Literal path — registered before /{eval_id}."""
+    xlsx_bytes = await build_evaluations_excel(session, user)
+    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+                      action="evaluations_exported", entity_type="evaluations")
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="evaluations-export.xlsx"'},
+    )
 
 
 @router.get("/attendance-import-template")

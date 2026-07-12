@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + **bundle ฟอนต์ OFL (Sarabun) สำหรับ PDF** เสร็จ+พิสูจน์ (pytest 66/66 · browser · PDF จริง) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance/ถ้อยคำ BARS
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + **export คะแนนเป็น Excel** เสร็จ+พิสูจน์ (pytest 69/69 · browser · PDF/Excel จริง) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance/ถ้อยคำ BARS
 
 ---
 
@@ -90,7 +90,7 @@
 1. review pip-audit runtime advisories เมื่อมี fix (starlette/urllib3 รอ upstream ปล่อยเวอร์ชันแพตช์)
 2. รอ HR: **ยืนยันตัวเลขสูตร attendance** (ใช้ค่าเริ่มต้นไปก่อน — ดูหัวข้อด้านล่าง), เกณฑ์ probation ต่อ checkpoint, BARS anchors (ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
 3. (ไอเดียถัดไป ยังไม่เริ่ม) ให้ HR ปรับตัวเลขสัมประสิทธิ์สูตร attendance เองผ่านหน้า UI แทนการ hardcode ในโค้ด ถ้า HR อยากทดลองสูตรหลายแบบ
-4. (ไอเดียที่คุยกัน ยังไม่เริ่ม) export คะแนนผลประเมินเป็น Excel สำหรับเอาไปประมวลผลต่อ — ดูหัวข้อ "export Excel" ด้านล่างสำหรับแนวทาง
+4. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรองบน export Excel (เช่น ตาม cycle_id/สถานะ/ช่วงวันที่) ถ้าข้อมูลเยอะขึ้นจนต้อง export เฉพาะบางส่วน
 
 ## ✅ ทำไปแล้ว (ต่อ)
 
@@ -108,6 +108,13 @@
   - ดาวน์โหลด `Sarabun-Regular.ttf` + `OFL.txt` (สัญญาอนุญาต) จาก Google Fonts (`google/fonts` repo, OFL license) ไปไว้ที่ `backend/app/assets/fonts/` — เป็นไฟล์ในโปรเจกต์ ไม่ต้องพึ่งฟอนต์ระบบอีกต่อไป
   - `pdf.py`: เพิ่ม `_BUNDLED_FONT` (path แบบ relative ผ่าน `Path(__file__)` ใช้ได้ทุก deployment) เป็นลำดับที่ 2 ใน `_FONT_CANDIDATES` (รองจาก `PDF_FONT_PATH` env ที่ยัง override ได้ถ้าต้องการฟอนต์อื่น) ก่อนฟอนต์ระบบ Windows/Linux ที่เหลือไว้เป็น fallback สุดท้าย
   - พิสูจน์: เช็คว่า `pdfmetrics.getFont` โหลดจากไฟล์ที่ bundle จริง (ไม่ใช่ฟอนต์ระบบ) + สร้างใบประเมินจริงผ่าน API แล้ว render PDF เป็นภาพ (ใช้ PyMuPDF ชั่วคราวเพื่อตรวจสอบเท่านั้น ไม่ได้เพิ่มเป็น dependency ถาวร) — ตัวอักษรไทย สระ วรรณยุกต์ถูกต้องครบถ้วน, pytest 66/66 ผ่าน
+
+- **Export คะแนนผลประเมินเป็น Excel เสร็จ+พิสูจน์** →
+  - `services/excel_export.py` (openpyxl) — 2 ชีต: **"สรุป"** 1 แถวต่อ 1 ใบประเมิน (รหัสพนักงาน/ชื่อ/ตำแหน่ง/สาขา/ผู้ประเมิน/ชนิด/สถานะ/คะแนนประเมิน/คะแนนเต็ม/คะแนนมา-ลา/คะแนนรวม/ร้อยละ/วันที่สร้าง/วันที่ปิดใบ) เหมาะทำ pivot table, **"รายละเอียด"** 1 แถวต่อ 1 item ต่อใบ (สำหรับตรวจดูคะแนนรายข้อ) — ตัดสินใจแยก 2 ชีตแทนอัดทุก item เป็นคอลัมน์เดียวกัน เพราะจำนวน/รายชื่อ criteria items ปรับได้ต่อ tenant คอลัมน์แบบ item-per-column จะเลื่อนไม่คงที่
+  - **Visibility scope เดียวกับ `list_all`/`view_detail` เป๊ะ** — reuse `_sees_all_evaluations`/`_actor_employee_id` ตรง ๆ ไม่เขียนกฎใหม่ซ้ำ (ผู้ถูกประเมินเห็นแถวตัวเอง, สายบังคับบัญชาเห็นลูกน้อง, HR/GM/MD เห็นทั้ง tenant) — export จะไม่มีแถวไหนที่ผู้เรียกดูทีละใบไม่ได้อยู่แล้ว
+  - Route: `GET /api/evaluations/export` (literal path ประกาศก่อน `/{eval_id}` เหมือน `/inbox`/`/attendance-import`) — ไม่จำกัด role พิเศษเพราะ visibility filter ข้างในจัดการสิทธิ์ให้แล้ว (เหมือน list endpoint เดิม)
+  - Frontend: ปุ่ม "ดาวน์โหลด Excel" บนหน้า `Evaluations.tsx` (ใช้ `apiDownload` แบบเดียวกับปุ่ม PDF)
+  - พิสูจน์: pytest 3 เคสใหม่ (`test_excel_export.py`: subject/chain/HR เห็นแถวตัวเอง+คนที่เกี่ยวข้อง, คนนอกสายไม่เห็นข้อมูลคนอื่น, ชีตรายละเอียดมีครบทุก item ตามจำนวนจริง) — **pytest 69/69** + สร้างข้อมูลตัวอย่างจริงผ่าน API (3 พนักงาน คะแนนต่างกัน + 1 คนมี HR override attendance) แล้วเปิดไฟล์ตรวจ: หัวคอลัมน์ภาษาไทยถูกต้อง, ตัวเลขคำนวณตรง (attendance override 39.5/40 → total 151.5/180 = 84.17% ตรงกับที่ตั้งไว้), ชีตรายละเอียดมี 84 แถว = 3 คน × 28 ข้อ ถูกต้อง
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
