@@ -2,9 +2,9 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-07-06
+**อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + **BARS anchors ครบ 42 ตัวชี้วัด** เสร็จ+พิสูจน์ (pytest 56/56 · browser · PDF) → เหลือรอ HR (สูตร attendance) + bundle ฟอนต์ OFL
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + **BARS anchors ครบ 42 ตัวชี้วัด** เสร็จ+พิสูจน์ (pytest 56/56 · browser · PDF) → กำลังทำ **ระบบ attendance ให้ HR กรอกข้อมูลดิบ + auto-calc + import จำนวนมาก** (เริ่มแล้ว ยังไม่เสร็จ)
 
 ---
 
@@ -87,8 +87,11 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
-2. รอ HR: **สูตร attendance (เต็ม 40)**, เกณฑ์ probation ต่อ checkpoint (BARS anchors ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
+1. **กำลังทำ: ระบบ attendance ให้ HR กรอกข้อมูลดิบก่อน** (ตัดสินใจแล้ว: auto-calc จากสูตรตั้งต้น + HR override ได้, HR เท่านั้นที่กรอก/นำเข้า, รองรับ bulk import แบบเดียวกับ employee CSV import)
+   - `0016_attendance_override.sql` สร้างแล้ว (เพิ่ม `attendance_score_overridden`) — **ยังไม่ได้รัน db reset**
+   - ยังไม่ทำ: ฟังก์ชัน compute คะแนนจากข้อมูลดิบ (สูตรตั้งต้นที่เสนอไว้ ยังไม่ได้ยืนยันตัวเลขกับ user: 40 − 4×ขาด − 1×ลากิจ − 0.5×ลาป่วย − 1×ครั้งสาย, floor 0), endpoint HR-only แยกจาก `save_scores` เดิม, ทำหน้า scoring ของหัวหน้าให้เห็น attendance แบบ read-only, bulk CSV import (mirror `employee_import.py`), pytest, browser verify
+2. bundle ฟอนต์ OFL สำหรับ PDF (deploy Linux) + review pip-audit runtime advisories เมื่อมี fix
+3. รอ HR: ยืนยันตัวเลขสูตร attendance, เกณฑ์ probation ต่อ checkpoint (BARS anchors ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
