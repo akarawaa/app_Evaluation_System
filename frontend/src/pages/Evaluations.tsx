@@ -18,6 +18,11 @@ export default function Evaluations() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  const [exportStatus, setExportStatus] = useState('')
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exporting, setExporting] = useState(false)
+
   const load = () => apiGet<EvalListItem[]>('/api/evaluations').then(setEvals).catch((e) => setError(String(e)))
 
   useEffect(() => {
@@ -46,6 +51,23 @@ export default function Evaluations() {
 
   const empName = (id: string) => employees.find((e) => e.id === id)?.full_name ?? id.slice(0, 8)
 
+  const exportExcel = async () => {
+    setExporting(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (exportStatus) params.set('status', exportStatus)
+      if (exportFrom) params.set('date_from', exportFrom)
+      if (exportTo) params.set('date_to', exportTo)
+      const qs = params.toString()
+      await apiDownload(`/api/evaluations/export${qs ? `?${qs}` : ''}`, 'evaluations-export.xlsx')
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Mirrors the backend's create() check exactly (services/evaluations.py):
   // super_admin, hr_admin, or the direct supervisor of at least one employee.
   const isHrOrAbove = !!me && (me.is_super_admin || me.roles.includes('hr_admin'))
@@ -61,9 +83,6 @@ export default function Evaluations() {
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">ใบประเมินผล</h1>
         <nav className="flex items-center gap-4">
-          <button
-            onClick={() => apiDownload('/api/evaluations/export', 'evaluations-export.xlsx').catch((e) => setError(String(e)))}
-            className="text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด Excel</button>
           <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
           <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
         </nav>
@@ -108,6 +127,33 @@ export default function Evaluations() {
             </div>
           </section>
         )}
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-3 text-slate-700">ส่งออกคะแนนเป็น Excel</h2>
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-sm">
+              <span className="block text-slate-500">สถานะ</span>
+              <select className="border rounded px-2 py-1" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
+                <option value="">ทั้งหมด</option>
+                {Object.entries(STATUS_LABEL).map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="block text-slate-500">ตั้งแต่วันที่</span>
+              <input type="date" className="border rounded px-2 py-1" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
+            </label>
+            <label className="text-sm">
+              <span className="block text-slate-500">ถึงวันที่</span>
+              <input type="date" className="border rounded px-2 py-1" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
+            </label>
+            <button onClick={exportExcel} disabled={exporting}
+              className="bg-blue-600 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+              {exporting ? 'กำลังส่งออก…' : 'ดาวน์โหลด Excel'}
+            </button>
+          </div>
+        </section>
 
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">รายการใบประเมิน</h2>

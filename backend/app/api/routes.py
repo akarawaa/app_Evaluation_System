@@ -6,11 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
 from app.core.security import CurrentUser, get_current_user, require_roles
+from app.schemas.attendance_formula import AttendanceFormulaIn, AttendanceFormulaOut
 from app.schemas.branch import BranchCreate, BranchOut
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.schemas.employee_import import ImportResult
 from app.schemas.tenant import InviteUserIn
 from app.schemas.user import UserOut
+from app.services import attendance_formula as attendance_formula_svc
 from app.services import employees as emp_svc
 from app.services import employee_import as import_svc
 from app.services import tenant_admin as tenant_admin_svc
@@ -162,3 +164,20 @@ async def invite_user(
         payload.email, payload.password, payload.role,
         str(payload.employee_id) if payload.employee_id else None,
     )
+
+
+@router.get("/settings/attendance-formula", response_model=AttendanceFormulaOut)
+async def get_attendance_formula(
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await attendance_formula_svc.get_formula(session, user.company_id)
+
+
+@router.put("/settings/attendance-formula", response_model=AttendanceFormulaOut)
+async def set_attendance_formula(
+    payload: AttendanceFormulaIn,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await attendance_formula_svc.set_formula(session, user, payload)

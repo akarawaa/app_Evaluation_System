@@ -1,6 +1,9 @@
 """Evaluation lifecycle API (Phase 2, Step 2). All DB access via the tenant
 session (RLS-scoped); state transitions + authorization live in the service."""
-from fastapi import APIRouter, Depends, Response, UploadFile, status
+from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
@@ -51,12 +54,17 @@ async def inbox(
 
 @router.get("/export")
 async def export_evaluations(
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> Response:
     """Excel export of every evaluation the caller can see (same visibility
     policy as list_all). Literal path — registered before /{eval_id}."""
-    xlsx_bytes = await build_evaluations_excel(session, user)
+    xlsx_bytes = await build_evaluations_excel(
+        session, user, status=status_filter, date_from=date_from, date_to=date_to,
+    )
     await write_audit(session, company_id=user.company_id, actor_id=user.id,
                       action="evaluations_exported", entity_type="evaluations")
     return Response(

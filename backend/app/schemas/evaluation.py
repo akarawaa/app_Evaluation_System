@@ -39,7 +39,7 @@ class ScoresUpdate(BaseModel):
 
 class AttendanceSet(BaseModel):
     """HR-only: raw attendance facts for the period. The score is normally
-    computed from these (see services.evaluations.compute_attendance_score);
+    computed from these (see services.attendance_formula.compute_score);
     attendance_score lets HR override the computed value with a manual one.
     clear_override discards a previous manual override and goes back to the
     formula (recomputed from the figures in this same request)."""

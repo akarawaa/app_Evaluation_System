@@ -7,6 +7,14 @@ export type Me = {
   employee_id: string | null
 }
 
+export type AttendanceFormula = {
+  full_score: number
+  coef_absent: number
+  coef_personal: number
+  coef_sick: number
+  coef_late: number
+}
+
 export type Employee = {
   id: string
   emp_code: string

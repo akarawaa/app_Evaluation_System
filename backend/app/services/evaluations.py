@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import CurrentUser
+from app.services import attendance_formula
 from app.services.audit import write_audit
 
 
@@ -31,17 +32,6 @@ def _same_employee(a, b) -> bool:
     (e.g. a freshly invited user) could otherwise be treated as the manager
     of any employee whose manager_id also happens to be unset."""
     return a is not None and b is not None and a == b
-
-
-ATTENDANCE_FULL = 40
-
-
-def compute_attendance_score(sick_days: int, personal_days: int, late_count: int, absent_days: int) -> float:
-    """Default starting formula (HR may tune the deductions later; this is a
-    starting point, not a fixed policy): 40 points, minus 4/day absent,
-    1/day personal leave, 0.5/day sick leave, 1/occurrence late. Floored at 0."""
-    score = ATTENDANCE_FULL - 4 * absent_days - personal_days - 0.5 * sick_days - late_count
-    return max(0.0, score)
 
 
 def _is_md_or_gm(user: CurrentUser) -> bool:
@@ -290,8 +280,9 @@ async def set_attendance(session: AsyncSession, user: CurrentUser, eval_id: str,
         "select attendance_score, attendance_score_overridden from evaluation_attendance where evaluation_id = :id"
     ), {"id": eval_id})).mappings().first()
 
-    computed = compute_attendance_score(payload.sick_days, payload.personal_days,
-                                         payload.late_count, payload.absent_days)
+    formula = await attendance_formula.get_formula(session, user.company_id)
+    computed = attendance_formula.compute_score(formula, payload.sick_days, payload.personal_days,
+                                                 payload.late_count, payload.absent_days)
     if payload.clear_override:
         score, overridden = computed, False
     elif payload.attendance_score is not None:

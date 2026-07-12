@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
-import type { AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
+import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
 import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL } from '../types'
 
 const emptyForm = {
@@ -36,10 +36,14 @@ export default function People() {
   const [attImporting, setAttImporting] = useState(false)
   const attFileInputRef = useRef<HTMLInputElement>(null)
 
+  const [formula, setFormula] = useState<AttendanceFormula | null>(null)
+  const [savingFormula, setSavingFormula] = useState(false)
+
   const load = () => Promise.all([
     apiGet<Employee[]>('/api/employees').then(setEmployees),
     apiGet<Branch[]>('/api/branches').then(setBranches),
     apiGet<TenantUser[]>('/api/users').then(setUsers),
+    apiGet<AttendanceFormula>('/api/settings/attendance-formula').then(setFormula),
   ]).catch((e) => setError(String(e)))
 
   useEffect(() => { load() }, [])
@@ -127,6 +131,15 @@ export default function People() {
       setAttImporting(false)
       if (attFileInputRef.current) attFileInputRef.current.value = ''
     }
+  }
+
+  const saveFormula = () => {
+    if (!formula) return
+    setSavingFormula(true); setError(null); setMsg(null)
+    apiSend<AttendanceFormula>('PUT', '/api/settings/attendance-formula', formula)
+      .then((f) => { setFormula(f); setMsg('บันทึกสูตรคะแนนการมา-ลาแล้ว') })
+      .catch((e) => setError(String(e)))
+      .finally(() => setSavingFormula(false))
   }
 
   const sendInvite = () => {
@@ -255,6 +268,52 @@ export default function People() {
                   </tbody>
                 </table>
               )}
+            </div>
+          )}
+        </section>
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-1 text-slate-700">สูตรคำนวณคะแนนการมา-ลา</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            ระบบคำนวณคะแนนการมา-ลา (เต็ม) จากข้อมูลดิบด้วยสูตร: คะแนนเต็ม − (ค่าลด×วันขาด) − (ค่าลด×วันลากิจ) − (ค่าลด×วันลาป่วย) − (ค่าลด×ครั้งมาสาย)
+            ปรับตัวเลขได้ตามนโยบายบริษัท การเปลี่ยนสูตรมีผลกับข้อมูลที่กรอก/นำเข้าใหม่หลังจากนี้ ไม่กระทบคะแนนที่บันทึกไว้แล้ว
+          </p>
+          {formula && (
+            <div className="flex flex-wrap gap-3 items-end">
+              <label className="text-sm">
+                <span className="block text-slate-500">คะแนนเต็ม</span>
+                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
+                  value={formula.full_score}
+                  onChange={(e) => setFormula({ ...formula, full_score: Number(e.target.value) })} />
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">ลด/วันขาดงาน</span>
+                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
+                  value={formula.coef_absent}
+                  onChange={(e) => setFormula({ ...formula, coef_absent: Number(e.target.value) })} />
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">ลด/วันลากิจ</span>
+                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
+                  value={formula.coef_personal}
+                  onChange={(e) => setFormula({ ...formula, coef_personal: Number(e.target.value) })} />
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">ลด/วันลาป่วย</span>
+                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
+                  value={formula.coef_sick}
+                  onChange={(e) => setFormula({ ...formula, coef_sick: Number(e.target.value) })} />
+              </label>
+              <label className="text-sm">
+                <span className="block text-slate-500">ลด/ครั้งมาสาย</span>
+                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
+                  value={formula.coef_late}
+                  onChange={(e) => setFormula({ ...formula, coef_late: Number(e.target.value) })} />
+              </label>
+              <button onClick={saveFormula} disabled={savingFormula}
+                className="bg-slate-700 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+                {savingFormula ? 'กำลังบันทึก…' : 'บันทึกสูตร'}
+              </button>
             </div>
           )}
         </section>

@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + **export คะแนนเป็น Excel** เสร็จ+พิสูจน์ (pytest 69/69 · browser · PDF/Excel จริง) → เหลือรอ HR ยืนยันตัวเลขสูตร attendance/ถ้อยคำ BARS
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + **หน้า HR ปรับสูตร attendance เอง + ตัวกรอง export** เสร็จ+พิสูจน์ (pytest 76/76 · browser จริง) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
 
 ---
 
@@ -88,9 +88,8 @@
 
 ## 🔜 ทำต่อ (ถัดไป)
 1. review pip-audit runtime advisories เมื่อมี fix (starlette/urllib3 รอ upstream ปล่อยเวอร์ชันแพตช์)
-2. รอ HR: **ยืนยันตัวเลขสูตร attendance** (ใช้ค่าเริ่มต้นไปก่อน — ดูหัวข้อด้านล่าง), เกณฑ์ probation ต่อ checkpoint, BARS anchors (ทำชุดตั้งต้นแล้ว รอ HR ตรวจ/ปรับถ้อยคำ)
-3. (ไอเดียถัดไป ยังไม่เริ่ม) ให้ HR ปรับตัวเลขสัมประสิทธิ์สูตร attendance เองผ่านหน้า UI แทนการ hardcode ในโค้ด ถ้า HR อยากทดลองสูตรหลายแบบ
-4. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรองบน export Excel (เช่น ตาม cycle_id/สถานะ/ช่วงวันที่) ถ้าข้อมูลเยอะขึ้นจนต้อง export เฉพาะบางส่วน
+2. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint
+3. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
 
 ## ✅ ทำไปแล้ว (ต่อ)
 
@@ -114,7 +113,14 @@
   - **Visibility scope เดียวกับ `list_all`/`view_detail` เป๊ะ** — reuse `_sees_all_evaluations`/`_actor_employee_id` ตรง ๆ ไม่เขียนกฎใหม่ซ้ำ (ผู้ถูกประเมินเห็นแถวตัวเอง, สายบังคับบัญชาเห็นลูกน้อง, HR/GM/MD เห็นทั้ง tenant) — export จะไม่มีแถวไหนที่ผู้เรียกดูทีละใบไม่ได้อยู่แล้ว
   - Route: `GET /api/evaluations/export` (literal path ประกาศก่อน `/{eval_id}` เหมือน `/inbox`/`/attendance-import`) — ไม่จำกัด role พิเศษเพราะ visibility filter ข้างในจัดการสิทธิ์ให้แล้ว (เหมือน list endpoint เดิม)
   - Frontend: ปุ่ม "ดาวน์โหลด Excel" บนหน้า `Evaluations.tsx` (ใช้ `apiDownload` แบบเดียวกับปุ่ม PDF)
-  - พิสูจน์: pytest 3 เคสใหม่ (`test_excel_export.py`: subject/chain/HR เห็นแถวตัวเอง+คนที่เกี่ยวข้อง, คนนอกสายไม่เห็นข้อมูลคนอื่น, ชีตรายละเอียดมีครบทุก item ตามจำนวนจริง) — **pytest 69/69** + สร้างข้อมูลตัวอย่างจริงผ่าน API (3 พนักงาน คะแนนต่างกัน + 1 คนมี HR override attendance) แล้วเปิดไฟล์ตรวจ: หัวคอลัมน์ภาษาไทยถูกต้อง, ตัวเลขคำนวณตรง (attendance override 39.5/40 → total 151.5/180 = 84.17% ตรงกับที่ตั้งไว้), ชีตรายละเอียดมี 84 แถว = 3 คน × 28 ข้อ ถูกต้อง
+  - พิสูจน์: pytest 3 เคสใหม่ (`test_excel_export.py`: subject/chain/HR เห็นแถวตัวเอง+คนที่เกี่ยวข้อง, คนนอกสายไม่เห็นข้อมูลคนอื่น, ชีตรายละเอียดมีครบทุก item ตามจำนวนจริง) + สร้างข้อมูลตัวอย่างจริงผ่าน API (3 พนักงาน คะแนนต่างกัน + 1 คนมี HR override attendance) แล้วเปิดไฟล์ตรวจ: หัวคอลัมน์ภาษาไทยถูกต้อง, ตัวเลขคำนวณตรง (attendance override 39.5/40 → total 151.5/180 = 84.17% ตรงกับที่ตั้งไว้), ชีตรายละเอียดมี 84 แถว = 3 คน × 28 ข้อ ถูกต้อง
+
+- **HR ปรับสูตรคะแนน attendance เองผ่าน UI + ตัวกรองบน export Excel เสร็จ+พิสูจน์** →
+  - **`0017_attendance_formula_settings.sql`**: ตาราง `company_attendance_formula` (company_id PK, full_score/coef_absent/coef_personal/coef_sick/coef_late, RLS ครบ 4 policy ตาม pattern มาตรฐาน + **grant select/insert/update/delete ให้ role authenticated ชัดเจน** — จุดพลาดที่เจอระหว่างทำ: migration 0006 ที่ grant ให้ตารางทั้งหมดใน schema public รันไปแล้วก่อนตารางนี้จะถูกสร้าง ไม่ครอบตารางใหม่ย้อนหลัง ต้อง grant เองในตารางที่สร้างทีหลังเสมอ (เหมือน pattern ที่ 0011/0012 ทำไว้แล้ว)
+  - `services/attendance_formula.py`: `get_formula` (คืนค่า default ถ้ายังไม่มีแถวตั้งค่า — เพื่อไม่ให้ tenant เก่าพังถ้าไม่เคยเข้าไปตั้งค่า), `compute_score` (แยกจากการ query เพื่อทดสอบง่าย), `set_formula` (upsert + กันค่าติดลบ + audit log). ย้าย `compute_attendance_score` เดิมใน `services/evaluations.py` มาไว้ที่นี่ทั้งหมด แล้วให้ `set_attendance`/`attendance_import.py` ดึงสูตรของ tenant ตัวเองมาใช้แทนค่า hardcode
+  - Routes: `GET/PUT /api/settings/attendance-formula` (hr_admin only). Frontend: section ใหม่ในหน้า `People.tsx` ("สูตรคำนวณคะแนนการมา-ลา") ให้กรอกตัวเลข 5 ช่องแล้วบันทึก
+  - **ตัวกรอง export Excel**: `GET /api/evaluations/export?status=&date_from=&date_to=` — จุดที่ต้องระวัง: `text()` ของ SQLAlchemy ตีความ `::type` cast ชนกับ syntax bind param `:name` ทำให้ syntax error ต้องใช้ `cast(:param as type)` แทน; และต้อง cast type explicit เพราะ asyncpg ไม่สามารถ infer type ของ NULL param ได้เอง (`AmbiguousParameterError`). Frontend: เพิ่ม dropdown สถานะ + ช่วงวันที่เหนือปุ่มดาวน์โหลดใน `Evaluations.tsx`
+  - พิสูจน์: pytest 5 เคสใหม่ (`test_attendance_formula.py`: ค่า default ตอนยังไม่ตั้งค่า, เฉพาะ HR แก้ได้ (403), กันค่าติดลบ (422), บันทึกแล้วมีผลจริงกับ `set_attendance` ที่ตามมา, **negative test cross-tenant** — สูตรที่ tenant A ตั้งไม่รั่วไป tenant B) + `test_excel_export.py` เพิ่ม 2 เคส (filter สถานะ, filter ช่วงวันที่) — **pytest 76/76** + browser จริง (login HR → แก้ไข "ลด/วันลาป่วย" จาก 0.5 เป็น 2 → บันทึก → reload หน้าใหม่ทั้งหมด → ค่ายังเป็น 2 ยืนยันว่าบันทึกลง DB จริงไม่ใช่แค่ state ฝั่ง client; หน้า export มีตัวกรองสถานะ+วันที่ครบ กดดาวน์โหลดได้ 200)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

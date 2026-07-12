@@ -9,7 +9,9 @@ Visibility is the same policy as list_all()/view_detail() — this reuses
 _sees_all_evaluations/_can_view so an export never contains a row the caller
 couldn't otherwise see one-by-one.
 """
+from datetime import date
 from io import BytesIO
+from typing import Optional
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -43,7 +45,12 @@ def _bold_header(ws, headers: list[str]) -> None:
         ws.cell(row=1, column=i, value=h).font = Font(bold=True)
 
 
-async def build_evaluations_excel(session: AsyncSession, user: CurrentUser) -> bytes:
+async def build_evaluations_excel(
+    session: AsyncSession, user: CurrentUser,
+    status: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+) -> bytes:
     see_all = _sees_all_evaluations(user)
     actor_emp = None if see_all else await _actor_employee_id(session, user.id)
 
@@ -57,12 +64,18 @@ async def build_evaluations_excel(session: AsyncSession, user: CurrentUser) -> b
         "join employees emp on emp.id = ev.employee_id "
         "left join branches br on br.id = emp.branch_id "
         "left join employees evaluator on evaluator.id = ev.evaluator_id "
-        "where :see_all "
+        "where (:see_all "
         "   or emp.id = :actor_emp "
         "   or emp.supervisor_id = :actor_emp "
-        "   or emp.manager_id = :actor_emp "
+        "   or emp.manager_id = :actor_emp) "
+        "   and (cast(:status as text) is null or ev.status = :status) "
+        "   and (cast(:date_from as date) is null or ev.created_at::date >= :date_from) "
+        "   and (cast(:date_to as date) is null or ev.created_at::date <= :date_to) "
         "order by ev.created_at desc"
-    ), {"see_all": see_all, "actor_emp": actor_emp})).mappings().all()
+    ), {
+        "see_all": see_all, "actor_emp": actor_emp,
+        "status": status, "date_from": date_from, "date_to": date_to,
+    })).mappings().all()
 
     eval_ids = [str(r["id"]) for r in rows]
     items_by_eval: dict[str, list] = {eid: [] for eid in eval_ids}

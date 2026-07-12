@@ -52,3 +52,32 @@ async def test_export_detail_sheet_has_item_rows(api, org):
     matching = [row for row in rows if row[0] == "E1"]
     assert len(matching) == 28  # operational template item count
     assert all(row[4] == 3.5 for row in matching)
+
+
+async def test_export_status_filter(api, org):
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+    eid = r.json()["id"]
+
+    r_finalized = await api.get("/api/evaluations/export", headers=auth(org["hr"]), params={"status": "finalized"})
+    wb = load_workbook(BytesIO(r_finalized.content))
+    assert wb["สรุป"].max_row == 1  # header only, this draft doesn't match
+
+    r_draft = await api.get("/api/evaluations/export", headers=auth(org["hr"]), params={"status": "draft"})
+    wb2 = load_workbook(BytesIO(r_draft.content))
+    codes = [row[0].value for row in wb2["สรุป"].iter_rows(min_row=2)]
+    assert "E1" in codes
+
+
+async def test_export_date_range_filter(api, org):
+    await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
+
+    r_future = await api.get("/api/evaluations/export", headers=auth(org["hr"]),
+                             params={"date_from": "2999-01-01"})
+    wb = load_workbook(BytesIO(r_future.content))
+    assert wb["สรุป"].max_row == 1  # nothing created that far in the future
+
+    r_past = await api.get("/api/evaluations/export", headers=auth(org["hr"]),
+                           params={"date_from": "2000-01-01"})
+    wb2 = load_workbook(BytesIO(r_past.content))
+    codes = [row[0].value for row in wb2["สรุป"].iter_rows(min_row=2)]
+    assert "E1" in codes
