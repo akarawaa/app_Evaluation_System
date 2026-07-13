@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-07-12
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + **หน้า HR ปรับสูตร attendance เอง + ตัวกรอง export** เสร็จ+พิสูจน์ (pytest 76/76 · browser จริง) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + **หน้าเปรียบเทียบผลประเมิน** เสร็จ+พิสูจน์ (pytest 81/81 · browser จริง) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
 
 ---
 
@@ -90,6 +90,7 @@
 1. review pip-audit runtime advisories เมื่อมี fix (starlette/urllib3 รอ upstream ปล่อยเวอร์ชันแพตช์)
 2. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint
 3. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
+4. **(ตัดสินใจรอ) ขยาย audit log ให้ครอบคลุม "sensitive read" กว้างขึ้น** — ตอนนี้ audit ครอบ mutation ทุกจุด + export (PDF/Excel) + compare แล้ว แต่ยังไม่ครอบการเปิดดูใบประเมิน/พนักงานแบบเจาะจงทีละรายการ (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) ตามที่ `docs/LOGGING_AND_AUDIT.md` ระบุไว้เป็นเป้าหมาย Phase 1 (`view_employee`) — ยังไม่ทำเพราะจะเพิ่มปริมาณ write เข้า audit_logs ทุก GET request อย่างมีนัยสำคัญ ควรคุยกับทีมก่อนว่าต้องการระดับละเอียดแค่ไหน (ทุกครั้งที่เปิดดู vs. เฉพาะการ export/เปรียบเทียบแบบที่ทำไปแล้ว)
 
 ## ✅ ทำไปแล้ว (ต่อ)
 
@@ -120,7 +121,15 @@
   - `services/attendance_formula.py`: `get_formula` (คืนค่า default ถ้ายังไม่มีแถวตั้งค่า — เพื่อไม่ให้ tenant เก่าพังถ้าไม่เคยเข้าไปตั้งค่า), `compute_score` (แยกจากการ query เพื่อทดสอบง่าย), `set_formula` (upsert + กันค่าติดลบ + audit log). ย้าย `compute_attendance_score` เดิมใน `services/evaluations.py` มาไว้ที่นี่ทั้งหมด แล้วให้ `set_attendance`/`attendance_import.py` ดึงสูตรของ tenant ตัวเองมาใช้แทนค่า hardcode
   - Routes: `GET/PUT /api/settings/attendance-formula` (hr_admin only). Frontend: section ใหม่ในหน้า `People.tsx` ("สูตรคำนวณคะแนนการมา-ลา") ให้กรอกตัวเลข 5 ช่องแล้วบันทึก
   - **ตัวกรอง export Excel**: `GET /api/evaluations/export?status=&date_from=&date_to=` — จุดที่ต้องระวัง: `text()` ของ SQLAlchemy ตีความ `::type` cast ชนกับ syntax bind param `:name` ทำให้ syntax error ต้องใช้ `cast(:param as type)` แทน; และต้อง cast type explicit เพราะ asyncpg ไม่สามารถ infer type ของ NULL param ได้เอง (`AmbiguousParameterError`). Frontend: เพิ่ม dropdown สถานะ + ช่วงวันที่เหนือปุ่มดาวน์โหลดใน `Evaluations.tsx`
-  - พิสูจน์: pytest 5 เคสใหม่ (`test_attendance_formula.py`: ค่า default ตอนยังไม่ตั้งค่า, เฉพาะ HR แก้ได้ (403), กันค่าติดลบ (422), บันทึกแล้วมีผลจริงกับ `set_attendance` ที่ตามมา, **negative test cross-tenant** — สูตรที่ tenant A ตั้งไม่รั่วไป tenant B) + `test_excel_export.py` เพิ่ม 2 เคส (filter สถานะ, filter ช่วงวันที่) — **pytest 76/76** + browser จริง (login HR → แก้ไข "ลด/วันลาป่วย" จาก 0.5 เป็น 2 → บันทึก → reload หน้าใหม่ทั้งหมด → ค่ายังเป็น 2 ยืนยันว่าบันทึกลง DB จริงไม่ใช่แค่ state ฝั่ง client; หน้า export มีตัวกรองสถานะ+วันที่ครบ กดดาวน์โหลดได้ 200)
+  - พิสูจน์: pytest 5 เคสใหม่ (`test_attendance_formula.py`: ค่า default ตอนยังไม่ตั้งค่า, เฉพาะ HR แก้ได้ (403), กันค่าติดลบ (422), บันทึกแล้วมีผลจริงกับ `set_attendance` ที่ตามมา, **negative test cross-tenant** — สูตรที่ tenant A ตั้งไม่รั่วไป tenant B) + `test_excel_export.py` เพิ่ม 2 เคส (filter สถานะ, filter ช่วงวันที่) — pytest 76/76 + browser จริง (login HR → แก้ไข "ลด/วันลาป่วย" จาก 0.5 เป็น 2 → บันทึก → reload หน้าใหม่ทั้งหมด → ค่ายังเป็น 2 ยืนยันว่าบันทึกลง DB จริงไม่ใช่แค่ state ฝั่ง client; หน้า export มีตัวกรองสถานะ+วันที่ครบ กดดาวน์โหลดได้ 200)
+
+- **หน้าเปรียบเทียบผลประเมิน (2 โหมด) + audit log การเปรียบเทียบ เสร็จ+พิสูจน์** →
+  - **สถาปัตยกรรม**: ทั้ง (ก) เทียบพนักงานหลายคนในรอบเดียวกัน และ (ข) เทียบพนักงานคนเดียวกันข้ามหลายรอบ ใช้ **endpoint เดียวกัน** — `GET /api/evaluations/compare?ids=&ids=...` (เลือกได้ 2-5 ใบ) เพราะทั้งสองแบบคือ "เลือกใบประเมิน 2-5 ใบมา pivot คะแนนเทียบกัน" ต่างกันแค่ผู้ใช้เลือกใบของคนเดียวกันหรือหลายคน — ไม่ต้องแยกหน้า/endpoint
+  - **บังคับสิทธิ์แบบเดียวกับเปิดใบทีละใบเป๊ะ**: `services/compare.py` เรียก `view_detail()` (ตัวเดียวกับ `GET /{eval_id}`) ต่อใบ — ถ้าใบไหนอยู่นอกสายบังคับบัญชาของผู้เรียกและไม่ใช่ HR/GM/MD จะ 404 ทั้งการเปรียบเทียบทันที (ไม่ใช่แค่ซ่อนบางคอลัมน์) ตอบโจทย์ที่ระบุไว้ชัดว่า "ข้ามสายบังคับบัญชาไม่ได้"
+  - **จับคู่แถวคะแนนด้วย item_name** (ไม่ใช่ id) เพราะเทมเพลต operational/supervisor มีจำนวน/รายชื่อ item ต่างกัน — เรียงตามลำดับที่พบก่อนในใบแรกที่มี item นั้น
+  - **Audit log**: บันทึก action `evaluations_compared` (พร้อมรายการ evaluation_ids ที่เทียบ) ทุกครั้งที่เรียก compare — ตอบโจทย์ "log บันทึกการใช้งานเพื่อตรวจสอบย้อนหลัง" สำหรับฟีเจอร์นี้ (ระบบมี audit ครอบทุก mutation + PDF/Excel export อยู่แล้วก่อนหน้านี้)
+  - Route: `GET /api/evaluations/compare` (literal path ก่อน `/{eval_id}`). Frontend: หน้าใหม่ `Compare.tsx` (route `/evaluations/compare`, ลิงก์จากหน้า `Evaluations.tsx`) — ตารางเลือกใบประเมิน (checkbox, จำกัด 2-5) จากรายการที่มองเห็นอยู่แล้ว (ใช้สิทธิ์เดียวกับ list เดิม) แล้วแสดงผลเป็นตารางเทียบข้าง (คอลัมน์ = ใบประเมิน, แถวบนสุด = คะแนนรวม/มา-ลา/ร้อยละ, แถวล่าง = คะแนนรายข้อ 28-42 ข้อ)
+  - พิสูจน์: pytest 5 เคสใหม่ (`test_compare.py`: บังคับเลือก 2-5 ใบ, โหมด ข (คนเดียวข้ามเวลา) คะแนนตรงตามที่บันทึก, โหมด ก (สองคนรอบเดียวกัน) แสดงครบ, **บังคับสิทธิ์ 404 ถ้าเปิดใบนอกสาย**, มี audit log จริงในตาราง) — **pytest 81/81** + browser จริง (login HR เลือก 2 ใบของพนักงานคนละคน → เปรียบเทียบ → เห็นตาราง 28 แถวตรงกับคะแนนที่ให้ไว้ 4 กับ 3, คะแนนรวม 112/140 (62.22%) กับ 84/140 (46.67%) ถูกต้อง)
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```

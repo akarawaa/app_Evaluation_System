@@ -83,6 +83,7 @@ export default function Evaluations() {
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">ใบประเมินผล</h1>
         <nav className="flex items-center gap-4">
+          <Link to="/evaluations/compare" className="text-sm text-blue-600 hover:text-blue-800">เปรียบเทียบผลประเมิน</Link>
           <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
           <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
         </nav>

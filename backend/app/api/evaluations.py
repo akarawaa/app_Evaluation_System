@@ -19,6 +19,7 @@ from app.schemas.evaluation import (
 from app.services import attendance_import as attendance_import_svc
 from app.services import evaluations as svc
 from app.services.audit import write_audit
+from app.services.compare import build_comparison
 from app.services.excel_export import build_evaluations_excel
 from app.services.pdf import build_evaluation_pdf
 
@@ -72,6 +73,18 @@ async def export_evaluations(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="evaluations-export.xlsx"'},
     )
+
+
+@router.get("/compare")
+async def compare_evaluations(
+    ids: list[str] = Query(...),
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    """Side-by-side comparison of 2-5 evaluations (same cycle across
+    employees, or same employee across time — the caller picks which).
+    Literal path — registered before /{eval_id}."""
+    return await build_comparison(session, user, ids)
 
 
 @router.get("/attendance-import-template")

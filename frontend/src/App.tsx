@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import RequireRole from './components/RequireRole'
+import Compare from './pages/Compare'
 import Dashboard from './pages/Dashboard'
 import EvaluationDetail from './pages/EvaluationDetail'
 import Evaluations from './pages/Evaluations'
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/tenants" element={<ProtectedRoute><RequireRole anyOf={['super_admin']}><Tenants /></RequireRole></ProtectedRoute>} />
       <Route path="/tenants/:id" element={<ProtectedRoute><RequireRole anyOf={['super_admin']}><TenantDetail /></RequireRole></ProtectedRoute>} />
       <Route path="/evaluations" element={<ProtectedRoute><Evaluations /></ProtectedRoute>} />
+      <Route path="/evaluations/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
       <Route path="/evaluations/:id" element={<ProtectedRoute><EvaluationDetail /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

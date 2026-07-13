@@ -178,6 +178,32 @@ export const ACTION_LABEL: Record<InboxAction, string> = {
   finalize: 'รอสรุป/ปิดใบ (HR)',
 }
 
+export type CompareColumn = {
+  evaluation_id: string
+  emp_code: string | null
+  full_name: string | null
+  position: string | null
+  kind: string
+  status: string
+  eval_score: number | null
+  eval_max: number | null
+  attendance_score: number | null
+  total_score: number | null
+  percentage: number | null
+  created_at: string | null
+}
+
+export type CompareRow = {
+  category_name: string
+  item_name: string
+  scores: Record<string, number | null>
+}
+
+export type CompareResult = {
+  columns: CompareColumn[]
+  rows: CompareRow[]
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   draft: 'ร่าง',
   submitted: 'ส่งแล้ว (รอ ผจก.แผนก)',
