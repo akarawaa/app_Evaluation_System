@@ -123,13 +123,24 @@
   - **ตัวกรอง export Excel**: `GET /api/evaluations/export?status=&date_from=&date_to=` — จุดที่ต้องระวัง: `text()` ของ SQLAlchemy ตีความ `::type` cast ชนกับ syntax bind param `:name` ทำให้ syntax error ต้องใช้ `cast(:param as type)` แทน; และต้อง cast type explicit เพราะ asyncpg ไม่สามารถ infer type ของ NULL param ได้เอง (`AmbiguousParameterError`). Frontend: เพิ่ม dropdown สถานะ + ช่วงวันที่เหนือปุ่มดาวน์โหลดใน `Evaluations.tsx`
   - พิสูจน์: pytest 5 เคสใหม่ (`test_attendance_formula.py`: ค่า default ตอนยังไม่ตั้งค่า, เฉพาะ HR แก้ได้ (403), กันค่าติดลบ (422), บันทึกแล้วมีผลจริงกับ `set_attendance` ที่ตามมา, **negative test cross-tenant** — สูตรที่ tenant A ตั้งไม่รั่วไป tenant B) + `test_excel_export.py` เพิ่ม 2 เคส (filter สถานะ, filter ช่วงวันที่) — pytest 76/76 + browser จริง (login HR → แก้ไข "ลด/วันลาป่วย" จาก 0.5 เป็น 2 → บันทึก → reload หน้าใหม่ทั้งหมด → ค่ายังเป็น 2 ยืนยันว่าบันทึกลง DB จริงไม่ใช่แค่ state ฝั่ง client; หน้า export มีตัวกรองสถานะ+วันที่ครบ กดดาวน์โหลดได้ 200)
 
-- **หน้าเปรียบเทียบผลประเมิน (2 โหมด) + audit log การเปรียบเทียบ เสร็จ+พิสูจน์** →
+- **หน้าเปรียบเทียบผลประเมิน (2 โหมด) เสร็จ+พิสูจน์** →
   - **สถาปัตยกรรม**: ทั้ง (ก) เทียบพนักงานหลายคนในรอบเดียวกัน และ (ข) เทียบพนักงานคนเดียวกันข้ามหลายรอบ ใช้ **endpoint เดียวกัน** — `GET /api/evaluations/compare?ids=&ids=...` (เลือกได้ 2-5 ใบ) เพราะทั้งสองแบบคือ "เลือกใบประเมิน 2-5 ใบมา pivot คะแนนเทียบกัน" ต่างกันแค่ผู้ใช้เลือกใบของคนเดียวกันหรือหลายคน — ไม่ต้องแยกหน้า/endpoint
   - **บังคับสิทธิ์แบบเดียวกับเปิดใบทีละใบเป๊ะ**: `services/compare.py` เรียก `view_detail()` (ตัวเดียวกับ `GET /{eval_id}`) ต่อใบ — ถ้าใบไหนอยู่นอกสายบังคับบัญชาของผู้เรียกและไม่ใช่ HR/GM/MD จะ 404 ทั้งการเปรียบเทียบทันที (ไม่ใช่แค่ซ่อนบางคอลัมน์) ตอบโจทย์ที่ระบุไว้ชัดว่า "ข้ามสายบังคับบัญชาไม่ได้"
   - **จับคู่แถวคะแนนด้วย item_name** (ไม่ใช่ id) เพราะเทมเพลต operational/supervisor มีจำนวน/รายชื่อ item ต่างกัน — เรียงตามลำดับที่พบก่อนในใบแรกที่มี item นั้น
-  - **Audit log**: บันทึก action `evaluations_compared` (พร้อมรายการ evaluation_ids ที่เทียบ) ทุกครั้งที่เรียก compare — ตอบโจทย์ "log บันทึกการใช้งานเพื่อตรวจสอบย้อนหลัง" สำหรับฟีเจอร์นี้ (ระบบมี audit ครอบทุก mutation + PDF/Excel export อยู่แล้วก่อนหน้านี้)
+  - เพิ่ม audit action `evaluations_compared` เข้าไปในระบบ audit log **เดียวกับที่ทุกฟีเจอร์ในระบบใช้อยู่แล้ว** (ดูหัวข้อ "audit log ครอบคลุมทั้งโปรแกรม" ด้านล่าง — ไม่ใช่ log แยกเฉพาะของหน้านี้)
   - Route: `GET /api/evaluations/compare` (literal path ก่อน `/{eval_id}`). Frontend: หน้าใหม่ `Compare.tsx` (route `/evaluations/compare`, ลิงก์จากหน้า `Evaluations.tsx`) — ตารางเลือกใบประเมิน (checkbox, จำกัด 2-5) จากรายการที่มองเห็นอยู่แล้ว (ใช้สิทธิ์เดียวกับ list เดิม) แล้วแสดงผลเป็นตารางเทียบข้าง (คอลัมน์ = ใบประเมิน, แถวบนสุด = คะแนนรวม/มา-ลา/ร้อยละ, แถวล่าง = คะแนนรายข้อ 28-42 ข้อ)
-  - พิสูจน์: pytest 5 เคสใหม่ (`test_compare.py`: บังคับเลือก 2-5 ใบ, โหมด ข (คนเดียวข้ามเวลา) คะแนนตรงตามที่บันทึก, โหมด ก (สองคนรอบเดียวกัน) แสดงครบ, **บังคับสิทธิ์ 404 ถ้าเปิดใบนอกสาย**, มี audit log จริงในตาราง) — **pytest 81/81** + browser จริง (login HR เลือก 2 ใบของพนักงานคนละคน → เปรียบเทียบ → เห็นตาราง 28 แถวตรงกับคะแนนที่ให้ไว้ 4 กับ 3, คะแนนรวม 112/140 (62.22%) กับ 84/140 (46.67%) ถูกต้อง)
+  - พิสูจน์: pytest 5 เคสใหม่ (`test_compare.py`: บังคับเลือก 2-5 ใบ, โหมด ข (คนเดียวข้ามเวลา) คะแนนตรงตามที่บันทึก, โหมด ก (สองคนรอบเดียวกัน) แสดงครบ, **บังคับสิทธิ์ 404 ถ้าเปิดใบนอกสาย**, มี audit log จริงในตาราง) — pytest 81/81 + browser จริง (login HR เลือก 2 ใบของพนักงานคนละคน → เปรียบเทียบ → เห็นตาราง 28 แถวตรงกับคะแนนที่ให้ไว้ 4 กับ 3, คะแนนรวม 112/140 (62.22%) กับ 84/140 (46.67%) ถูกต้อง)
+
+- **ยืนยัน+เอกสาร: audit log ครอบคลุมการเปลี่ยนแปลงข้อมูลทั้งโปรแกรม (ไม่ใช่แค่ฟีเจอร์เดียว)** →
+  - **แก้ไขความเข้าใจผิดในเอกสารรอบก่อน** ที่เขียนราวกับว่า audit log เป็นสิ่งที่เพิ่งเพิ่มเฉพาะหน้าเปรียบเทียบ — จริง ๆ แล้ว `write_audit()` (`services/audit.py`) ถูกเรียกจากทุก mutation endpoint ในระบบมาตั้งแต่ Phase 1 ตามกติกาใน CLAUDE.md ("Audit ทุกการเปลี่ยนข้อมูลสำคัญ") และ `docs/LOGGING_AND_AUDIT.md`
+  - **รายการ action ที่มี audit log ครบทุกจุด mutation ในระบบปัจจุบัน** (ตรวจสอบด้วย `grep -rn write_audit app/`):
+    - Tenant/provisioning: `tenant_created`, `tenant_status_changed`, `user_invited` (ทั้ง super_admin invite และ hr_admin self-invite ใช้ฟังก์ชันเดียวกัน)
+    - Employee/branch: `create`/`update` (employees), `create`/`update` (branches), `employees_imported` (bulk CSV)
+    - Evaluation lifecycle: `evaluation_created`, `score_saved`, `evaluation_submitted`, `evaluation_approved`, `evaluation_returned`, `evaluation_finalized`
+    - Attendance: `attendance_updated`, `attendance_imported`, `attendance_formula_updated`
+    - Export/เปรียบเทียบ (sensitive read ไม่ใช่ mutation แต่ audit ไว้เพราะเป็นการเข้าถึงข้อมูลจำนวนมากพร้อมกัน): `evaluation_exported` (PDF), `evaluations_exported` (Excel), `evaluations_compared`
+  - แต่ละแถวบันทึก `company_id, actor_profile_id, action, entity_type, entity_id, before/after (jsonb), created_at` — append-only (RLS ไม่มี policy UPDATE/DELETE), tenant-scoped, อยู่ใน transaction เดียวกับการเปลี่ยนแปลงจริง (สำเร็จ = มี audit, ล้มเหลว = rollback ทั้งคู่) ตรวจสอบย้อนหลังได้ว่าใครทำอะไรกับข้อมูลไหนเมื่อไร
+  - **ยังไม่ครอบ** (ตัดสินใจรอ ดูหัวข้อ "ทำต่อ"): การเปิดดูข้อมูลทีละรายการแบบ read-only ธรรมดา (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) — ยังไม่ใช่ mutation จึงยังไม่มี audit log ต้องตัดสินใจร่วมกันก่อนว่าต้องการระดับละเอียดแค่ไหน
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
