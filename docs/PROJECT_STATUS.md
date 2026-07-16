@@ -2,9 +2,9 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-07-12
+**อัปเดตล่าสุด:** 2026-07-16
 **Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + **หน้าเปรียบเทียบผลประเมิน** เสร็จ+พิสูจน์ (pytest 81/81 · browser จริง) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + **อัปเกรด Python 3.9→3.11 + ปิดช่องโหว่ dependency ทั้งหมด** เสร็จ+พิสูจน์ (pytest 81/81 · pip-audit 0 vulnerabilities) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
 
 ---
 
@@ -87,10 +87,9 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
-1. review pip-audit runtime advisories เมื่อมี fix (starlette/urllib3 รอ upstream ปล่อยเวอร์ชันแพตช์)
-2. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint
-3. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
-4. **(ตัดสินใจรอ) ขยาย audit log ให้ครอบคลุม "sensitive read" กว้างขึ้น** — ตอนนี้ audit ครอบ mutation ทุกจุด + export (PDF/Excel) + compare แล้ว แต่ยังไม่ครอบการเปิดดูใบประเมิน/พนักงานแบบเจาะจงทีละรายการ (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) ตามที่ `docs/LOGGING_AND_AUDIT.md` ระบุไว้เป็นเป้าหมาย Phase 1 (`view_employee`) — ยังไม่ทำเพราะจะเพิ่มปริมาณ write เข้า audit_logs ทุก GET request อย่างมีนัยสำคัญ ควรคุยกับทีมก่อนว่าต้องการระดับละเอียดแค่ไหน (ทุกครั้งที่เปิดดู vs. เฉพาะการ export/เปรียบเทียบแบบที่ทำไปแล้ว)
+1. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint — ส่งไฟล์ `exports/evaluation-criteria-bars.docx` ให้ตรวจแล้ว
+2. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
+3. **(ตัดสินใจรอ) ขยาย audit log ให้ครอบคลุม "sensitive read" กว้างขึ้น** — ตอนนี้ audit ครอบ mutation ทุกจุด + export (PDF/Excel) + compare แล้ว แต่ยังไม่ครอบการเปิดดูใบประเมิน/พนักงานแบบเจาะจงทีละรายการ (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) ตามที่ `docs/LOGGING_AND_AUDIT.md` ระบุไว้เป็นเป้าหมาย Phase 1 (`view_employee`) — ยังไม่ทำเพราะจะเพิ่มปริมาณ write เข้า audit_logs ทุก GET request อย่างมีนัยสำคัญ ควรคุยกับทีมก่อนว่าต้องการระดับละเอียดแค่ไหน (ทุกครั้งที่เปิดดู vs. เฉพาะการ export/เปรียบเทียบแบบที่ทำไปแล้ว)
 
 ## ✅ ทำไปแล้ว (ต่อ)
 
@@ -142,6 +141,14 @@
   - แต่ละแถวบันทึก `company_id, actor_profile_id, action, entity_type, entity_id, before/after (jsonb), created_at` — append-only (RLS ไม่มี policy UPDATE/DELETE), tenant-scoped, อยู่ใน transaction เดียวกับการเปลี่ยนแปลงจริง (สำเร็จ = มี audit, ล้มเหลว = rollback ทั้งคู่) ตรวจสอบย้อนหลังได้ว่าใครทำอะไรกับข้อมูลไหนเมื่อไร
   - **ยังไม่ครอบ** (ตัดสินใจรอ ดูหัวข้อ "ทำต่อ"): การเปิดดูข้อมูลทีละรายการแบบ read-only ธรรมดา (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) — ยังไม่ใช่ mutation จึงยังไม่มี audit log ต้องตัดสินใจร่วมกันก่อนว่าต้องการระดับละเอียดแค่ไหน
 
+- **อัปเกรด Python 3.9 → 3.11 + ปิดช่องโหว่ dependency ทั้งหมด เสร็จ+พิสูจน์** →
+  - **สาเหตุ**: `pip-audit` เคยขึ้น 35 รายการที่ "no-fix-available" (starlette/urllib3/python-multipart ฯลฯ) — ตรวจแล้วพบว่าเวอร์ชันที่แก้ไขจริง ๆ **มีอยู่แล้ว** แต่ต้องการ Python ≥3.10 ทั้งหมด (`pip install --dry-run` ยืนยัน `Requires-Python >=3.10`) ส่วนโปรเจกต์ตรึงไว้ที่ 3.9 มาตั้งแต่ Phase 1 เพราะตอนนั้น greenlet ไม่มี wheel สำหรับ cp39 บนเครื่องที่ไม่มี MSVC
+  - ผู้ใช้ติดตั้ง Python 3.11.9 เพิ่มในเครื่อง (ไม่กระทบ Python 3.9 เดิม) แล้วสร้าง venv ใหม่จากนั้น — เลือก 3.11 แทนที่จะกระโดดไป 3.14 (เวอร์ชันเดียวที่มีอยู่ก่อนหน้า) เพราะ 3.14 ใหม่เกินไป เสี่ยงที่ C extension อย่าง greenlet/asyncpg จะยังไม่มี wheel รองรับ
+  - **ผลพลอยได้ที่สำคัญกว่าที่ตั้งใจ**: ระหว่างไล่ดู dependency พบว่า `python-jose[cryptography]` ที่อยู่ใน `requirements.txt` มาตั้งแต่ Phase 1 **ไม่ได้ถูก import ใช้งานที่ไหนเลย** (โค้ดจริงใช้ `pyjwt[crypto]` ตัวเดียวสำหรับ verify JWT ผ่าน JWKS/ES256 ใน `core/security.py`) — `python-jose` ดึง `ecdsa` มาเป็น transitive dependency ซึ่งเป็นตัวที่เหลืออยู่ตัวเดียวใน pip-audit หลังอัปเกรด (ไม่มี fix version เพราะเป็นช่องโหว่เชิง timing-attack ที่ maintainer ประกาศจะไม่แก้ในเวอร์ชัน pure-Python) **ลบ `python-jose` ออกทำให้ `ecdsa` หายไปทั้งเส้น** ไม่ต้อง "ยอมรับความเสี่ยง" ไว้เฉย ๆ
+  - อัปเดต `setuptools` ในตัว venv เป็น `>=83.0.0` ด้วย (เป็น dev-tooling ไม่ใช่ runtime แต่แก้ง่าย ไม่มีเหตุผลจะปล่อยค้าง)
+  - ผลลัพธ์: `pip-audit` จาก 35 รายการ → **0 known vulnerabilities**
+  - พิสูจน์: สร้าง venv ใหม่จาก `requirements.txt` ที่แก้แล้ว รันเซิร์ฟเวอร์จริงขึ้นสำเร็จ (`/docs` 200), รัน pytest เต็มชุด **81/81 ผ่าน** ทั้งบน venv ใหม่ก่อน rename และหลัง rename เป็น `.venv` (กันกรณี path-dependent อะไรพลาด), `npm run build` ฝั่ง frontend ผ่าน (ไม่กระทบเพราะเป็นคนละ stack), ลบ venv เก่า (Python 3.9) ทิ้งหลังยืนยันว่าไม่ต้องใช้แล้ว
+
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
 npx supabase start          # Postgres @54322, API @54321, Studio @54323
@@ -149,7 +156,7 @@ npx supabase start          # Postgres @54322, API @54321, Studio @54323
 cat supabase/tests/rls_negative_test.sql | docker exec -i supabase_db_app_Evaluation_System psql -U postgres -d postgres -v ON_ERROR_STOP=1
 # รัน backend API:
 cd backend && cp .env.example .env   # (ค่า local ใช้ได้เลย; SUPABASE_URL=http://localhost:54321)
-py -3.9 -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt   # ถ้า greenlet build ล้ม: pip install greenlet==3.1.1 ก่อน
+py -3.11 -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt   # 3.9 ใช้ได้เช่นกัน (ดู requirements.txt) แต่ 3.11+ ทำให้ patch ความปลอดภัยของ starlette/urllib3/python-multipart ใช้ได้ (ต้อง >=3.10)
 .venv/Scripts/python -m uvicorn app.main:app --port 8000
 # รัน API test 7/7 (อีก terminal): bash backend/tests/test_api.sh
 npx supabase stop           # ตอนเลิกงาน

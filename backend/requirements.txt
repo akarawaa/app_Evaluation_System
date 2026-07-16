@@ -8,16 +8,17 @@ python-multipart   # required for file upload (employee CSV import)
 # DB access (primary): SQLAlchemy async + asyncpg
 sqlalchemy[asyncio]
 asyncpg
-# On Python 3.9 without a C compiler, the latest greenlet has no cp39 wheel and
-# fails to build. Pin to a version that ships one:
+# Dev interpreter is Python 3.11+ (see PROJECT_STATUS.md). This pin only
+# matters if someone runs on 3.9 without a C compiler, where the latest
+# greenlet has no cp39 wheel and fails to build from source.
 greenlet==3.1.1 ; python_version < "3.10"
 
 # Supabase (used for Auth admin tasks only, e.g. inviting/creating users)
 supabase
 
-# Auth / JWT verification
+# Auth / JWT verification (pyjwt is the only one actually imported —
+# app/core/security.py verifies via JWKS/ES256 with it)
 pyjwt[crypto]
-python-jose[cryptography]
 
 # Logging
 structlog
