@@ -36,6 +36,9 @@ supabase/.env
 *.log
 logs/
 
+# ---- One-off deliverables (not source content) ----
+exports/
+
 # ---- OS / IDE ----
 .DS_Store
 Thumbs.db
