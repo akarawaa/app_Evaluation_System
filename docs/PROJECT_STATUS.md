@@ -87,6 +87,7 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
+0. **กำลังทำ: deploy pilot environment ฟรี** ให้หัวหน้างานทดลองใช้จริง (Supabase Cloud + Render + Vercel) — ดูขั้นตอนละเอียดที่ [docs/DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md), เตรียม `render.yaml` + `frontend/vercel.json` ไว้แล้ว รอผู้ใช้ทำขั้นที่ต้องสร้างบัญชี/กรอก secret เอง (Supabase project, GitHub repo, Render/Vercel signup)
 1. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint — ส่งไฟล์ `exports/evaluation-criteria-bars.docx` ให้ตรวจแล้ว
 2. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
 3. **(ตัดสินใจรอ) ขยาย audit log ให้ครอบคลุม "sensitive read" กว้างขึ้น** — ตอนนี้ audit ครอบ mutation ทุกจุด + export (PDF/Excel) + compare แล้ว แต่ยังไม่ครอบการเปิดดูใบประเมิน/พนักงานแบบเจาะจงทีละรายการ (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) ตามที่ `docs/LOGGING_AND_AUDIT.md` ระบุไว้เป็นเป้าหมาย Phase 1 (`view_employee`) — ยังไม่ทำเพราะจะเพิ่มปริมาณ write เข้า audit_logs ทุก GET request อย่างมีนัยสำคัญ ควรคุยกับทีมก่อนว่าต้องการระดับละเอียดแค่ไหน (ทุกครั้งที่เปิดดู vs. เฉพาะการ export/เปรียบเทียบแบบที่ทำไปแล้ว)
