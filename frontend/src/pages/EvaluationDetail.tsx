@@ -53,6 +53,13 @@ export default function EvaluationDetail() {
   // GM/MD are interchangeable at the top approval stage.
   const isMd = !!me && (me.is_super_admin || me.roles.includes('md') || me.roles.includes('gm'))
   const isHr = !!me && (me.is_super_admin || me.roles.includes('hr_admin'))
+  // Mirrors services/acknowledgement._require_can_record: whoever sat with the
+  // employee (evaluator / dept manager) plus HR. Deliberately not GM/MD — they
+  // approve the very next step.
+  const canRecordAck = isHr || isEvaluator || isDeptApprover
+  // The employee signs between the dept manager's approval and GM/MD's, so the
+  // section appears from dept_approved onward (and stays visible afterwards).
+  const showAckSection = ['dept_approved', 'md_approved', 'finalized'].includes(ev?.status ?? '')
   const canEditNow = editable && isEvaluator
 
   const categories = useMemo(() => {
@@ -254,8 +261,15 @@ export default function EvaluationDetail() {
           )}
           {ev.status === 'dept_approved' && isMd && (
             <>
-              <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy} className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
+              {/* Backend blocks this until the employee has signed; disable rather
+                  than let GM/MD click into a 409. */}
+              <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy || !ev.acknowledgement}
+                title={!ev.acknowledgement ? 'ต้องบันทึกการรับทราบของพนักงานก่อน' : undefined}
+                className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
               <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
+              {!ev.acknowledgement && (
+                <p className="text-sm text-amber-600 self-center">ต้องบันทึกการรับทราบของพนักงานก่อนจึงจะอนุมัติได้</p>
+              )}
             </>
           )}
           {ev.status === 'md_approved' && isHr && (
@@ -271,7 +285,9 @@ export default function EvaluationDetail() {
             <p className="text-sm text-slate-400 self-center">รอผจก.แผนกอนุมัติ</p>
           )}
           {ev.status === 'dept_approved' && !isMd && (
-            <p className="text-sm text-slate-400 self-center">รอ GM/MD อนุมัติ</p>
+            <p className="text-sm text-slate-400 self-center">
+              {ev.acknowledgement ? 'รอ GM/MD อนุมัติ' : 'รอพนักงานลงนามรับทราบ ก่อนส่งให้ GM/MD อนุมัติ'}
+            </p>
           )}
           {ev.status === 'md_approved' && !isHr && (
             <p className="text-sm text-slate-400 self-center">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
@@ -289,7 +305,7 @@ export default function EvaluationDetail() {
           </section>
         )}
 
-        {ev.status === 'finalized' && (
+        {showAckSection && (
           <section className="bg-white rounded-xl shadow p-5 text-sm">
             <h3 className="font-medium text-slate-700 mb-2">การรับทราบของพนักงาน</h3>
 
@@ -312,10 +328,12 @@ export default function EvaluationDetail() {
                     className="text-xs text-blue-600 hover:text-blue-800">ดาวน์โหลดไฟล์แนบ</button>
                 )}
               </div>
-            ) : isHr ? (
+            ) : ev.status === 'dept_approved' && canRecordAck ? (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500">
-                  พิมพ์ PDF ให้พนักงานลงนาม แล้วบันทึกผลกลับเข้าระบบที่นี่ (ระบบรับทราบทางอีเมลจะเปิดใช้ในเฟสถัดไป)
+                  กด "ดาวน์โหลด PDF" ด้านบนเพื่อพิมพ์ให้พนักงานลงนาม แล้วบันทึกผลกลับเข้าระบบที่นี่ —
+                  <b> GM/MD จะอนุมัติขั้นถัดไปได้ก็ต่อเมื่อบันทึกการรับทราบแล้ว</b>
+                  {' '}(ระบบรับทราบทางอีเมลจะเปิดใช้ในเฟสถัดไป)
                 </p>
                 <div className="flex flex-wrap gap-2 items-end">
                   <label className="text-xs text-slate-500">ผลการลงนาม
@@ -354,6 +372,10 @@ export default function EvaluationDetail() {
                 <button onClick={saveAcknowledgement} disabled={busy}
                   className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกการรับทราบ</button>
               </div>
+            ) : ev.status === 'dept_approved' ? (
+              <p className="text-slate-400">
+                รอหัวหน้างาน/ผจก.แผนก/ฝ่ายบุคคล พิมพ์เอกสารให้พนักงานลงนามและบันทึกผล
+              </p>
             ) : (
               <p className="text-slate-400">ยังไม่มีบันทึกการรับทราบ</p>
             )}

@@ -65,6 +65,16 @@ def _new(org):
     return {"employee_id": org["e_emp"], "template_id": org["template_id"], "kind": "annual"}
 
 
+async def _acknowledge(api, org, eid):
+    """The employee signs between the dept manager's approval and GM/MD's, so
+    every walk to md_approved has to pass through here (see
+    services/acknowledgement.py). Shared with the other test modules that
+    drive the full chain."""
+    r = await api.post(f"/api/evaluations/{eid}/acknowledge-paper", headers=auth(org["hr"]),
+                       data={"decision": "acknowledged"})
+    assert r.status_code == 200, r.text
+
+
 async def test_full_lifecycle(api, org):
     # employee (subject) may NOT create an evaluation for themselves
     r = await api.post("/api/evaluations", headers=auth(org["emp"]), json=_new(org))
@@ -107,6 +117,11 @@ async def test_full_lifecycle(api, org):
     # dept manager approves
     r = await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["dept"]), json={})
     assert r.status_code == 200 and r.json()["status"] == "dept_approved"
+
+    # MD is blocked until the employee has been shown the result and signed
+    r = await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["md"]), json={})
+    assert r.status_code == 409
+    await _acknowledge(api, org, eid)
 
     # MD approves
     r = await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["md"]), json={})
@@ -171,6 +186,7 @@ async def test_inbox_routes_through_each_step(api, org):
     md_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["md"]))).json()
     assert _ids(md_inbox).get(eid) == "md_approve"
 
+    await _acknowledge(api, org, eid)
     await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["md"]), json={})
     hr_inbox = (await api.get("/api/evaluations/inbox", headers=auth(org["hr"]))).json()
     assert _ids(hr_inbox).get(eid) == "finalize"
@@ -247,6 +263,7 @@ async def test_gm_approves_at_md_stage(api, org):
     await api.put(f"/api/evaluations/{eid}/scores", headers=auth(org["sup"]), json={"scores": scores})
     await api.post(f"/api/evaluations/{eid}/submit", headers=auth(org["sup"]), json={})
     await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["dept"]), json={})
+    await _acknowledge(api, org, eid)
 
     # GM's inbox shows it at the MD stage, and GM can approve it
     gm_inbox = _ids((await api.get("/api/evaluations/inbox", headers=auth(org["gm"]))).json())

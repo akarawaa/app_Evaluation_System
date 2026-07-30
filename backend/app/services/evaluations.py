@@ -39,6 +39,14 @@ def _is_md_or_gm(user: CurrentUser) -> bool:
     return "md" in user.roles or "gm" in user.roles
 
 
+async def _has_active_acknowledgement(session: AsyncSession, eval_id: str) -> bool:
+    row = (await session.execute(text(
+        "select 1 from evaluation_acknowledgements "
+        "where evaluation_id = :id and superseded_at is null"
+    ), {"id": eval_id})).first()
+    return row is not None
+
+
 def _sees_all_evaluations(user: CurrentUser) -> bool:
     """Who may read every evaluation in the tenant: HR (oversight) and the
     GM/MD top approvers (they act on all of them). Everyone else is limited to
@@ -105,7 +113,7 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     acknowledgement = (await session.execute(text(
         "select method, decision, comment, signed_at, witness_name, "
         "       attachment_path, content_hash, created_at "
-        "from evaluation_acknowledgements where evaluation_id = :id"
+        "from evaluation_acknowledgements where evaluation_id = :id and superseded_at is null"
     ), {"id": eval_id})).mappings().first()
     ev["items"] = [dict(x) for x in items]
     ev["comments"] = [dict(x) for x in comments]
@@ -158,7 +166,8 @@ async def list_all(session: AsyncSession, user: CurrentUser) -> list[dict]:
         "ev.eval_score, ev.eval_max, ev.total_score, ev.percentage, ev.created_at, "
         "ack.decision as acknowledgement_decision, ack.signed_at as acknowledgement_signed_at "
         "from evaluations ev join employees emp on emp.id = ev.employee_id "
-        "left join evaluation_acknowledgements ack on ack.evaluation_id = ev.id "
+        "left join evaluation_acknowledgements ack "
+        "       on ack.evaluation_id = ev.id and ack.superseded_at is null "
         "where :see_all "                                  # HR / GM / MD / super_admin
         "   or emp.id = :actor_emp "                       # the subject themselves
         "   or emp.supervisor_id = :actor_emp "            # direct supervisor
@@ -362,6 +371,15 @@ async def approve(session: AsyncSession, user: CurrentUser, eval_id: str, commen
     elif ev["status"] == "dept_approved":
         if not (user.is_super_admin or _is_md_or_gm(user)):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "only the GM/MD may approve now")
+        # The employee signs between the dept manager's approval and this one,
+        # so GM/MD always approve an evaluation the employee has already been
+        # shown. A refusal to sign counts too (recorded with a witness) --
+        # otherwise one uncooperative employee would freeze the evaluation
+        # forever.
+        if not await _has_active_acknowledgement(session, eval_id):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "ต้องบันทึกการรับทราบของพนักงานก่อน GM/MD จึงจะอนุมัติได้")
         new_status, step = "md_approved", "md"
     else:
         raise HTTPException(status.HTTP_409_CONFLICT,
@@ -399,13 +417,21 @@ async def return_to_draft(session: AsyncSession, user: CurrentUser, eval_id: str
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not the current approver")
 
     await session.execute(text("update evaluations set status='returned' where id=:id"), {"id": eval_id})
+    # The employee signed for a specific set of scores; a return means those
+    # scores are about to change, so that signature stops counting. It is kept
+    # (never deleted -- it is evidence of what was shown at the time) and a
+    # fresh one must be collected after the rescore.
+    superseded = (await session.execute(
+        text("select app.supersede_acknowledgement(:e, :c)"),
+        {"e": eval_id, "c": ev["company_id"]},
+    )).scalar_one()
     await session.execute(text(
         "insert into evaluation_approvals (company_id, evaluation_id, step, actor_id, decision, comment) "
         "values (:c,:e,:st,:a,'returned',:cm)"
     ), {"c": user.company_id, "e": eval_id, "st": step, "a": user.id, "cm": comment})
     await write_audit(session, company_id=user.company_id, actor_id=user.id,
                       action="evaluation_returned", entity_type="evaluations", entity_id=eval_id,
-                      after={"step": step})
+                      after={"step": step, "acknowledgements_superseded": superseded})
     return await get_detail(session, eval_id)
 
 

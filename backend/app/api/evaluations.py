@@ -204,12 +204,13 @@ async def acknowledge_paper(
     witness_name: Optional[str] = Form(None),
     signed_at: Optional[date] = Form(None),
     file: Optional[UploadFile] = File(None),
-    user: CurrentUser = Depends(require_roles("hr_admin")),
+    user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    """HR records that the employee acknowledged (or refused to acknowledge)
-    a printed copy in person. Electronic self-service acknowledgement is a
-    later phase."""
+    """Records that the employee acknowledged (or refused to acknowledge) a
+    printed copy in person, between the dept manager's approval and GM/MD's.
+    Authorization is the evaluation's own org chain (evaluator / dept manager
+    / HR), which route-level RBAC can't express -- see the service."""
     attachment_bytes = await file.read() if file else None
     return await ack_svc.record_paper_acknowledgement(
         session, user, eval_id,

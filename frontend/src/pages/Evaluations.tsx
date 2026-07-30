@@ -174,10 +174,11 @@ export default function Evaluations() {
                   <td>{ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</td>
                   <td>{ev.percentage != null ? `${ev.percentage}%` : '—'}</td>
                   <td>
-                    {ev.status !== 'finalized' ? <span className="text-slate-300">—</span>
-                      : ev.acknowledgement_decision
-                        ? <span className="text-green-700">{ACK_DECISION_LABEL[ev.acknowledgement_decision] ?? ev.acknowledgement_decision}</span>
-                        : <span className="text-amber-600">รอรับทราบ</span>}
+                    {ev.acknowledgement_decision
+                      ? <span className="text-green-700">{ACK_DECISION_LABEL[ev.acknowledgement_decision] ?? ev.acknowledgement_decision}</span>
+                      : ['dept_approved', 'md_approved', 'finalized'].includes(ev.status)
+                        ? <span className="text-amber-600">รอรับทราบ</span>
+                        : <span className="text-slate-300">—</span>}
                   </td>
                 </tr>
               ))}

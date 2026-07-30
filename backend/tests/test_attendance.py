@@ -1,6 +1,6 @@
 """Attendance: HR-owned raw data -> auto-computed score (+override) + bulk CSV import."""
 from conftest import auth
-from test_evaluation_lifecycle import _new, org  # noqa: F401
+from test_evaluation_lifecycle import _acknowledge, _new, org  # noqa: F401
 
 HEADER = "รหัสพนักงาน,จำนวนวันลาป่วย,จำนวนวันลากิจ,จำนวนครั้งมาสาย,จำนวนนาทีสายรวม,จำนวนวันขาดงาน"
 
@@ -82,6 +82,7 @@ async def test_cannot_set_attendance_after_finalize(api, org):
                        json={"scores": [{"evaluation_item_id": it["id"], "score": 4}], "comments": []})
     await api.post(f"/api/evaluations/{eid}/submit", headers=auth(org["sup"]))
     await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["dept"]), json={})
+    await _acknowledge(api, org, eid)
     await api.post(f"/api/evaluations/{eid}/approve", headers=auth(org["md"]), json={})
     r = await api.post(f"/api/evaluations/{eid}/finalize", headers=auth(org["hr"]), json={})
     assert r.status_code == 200, r.text
