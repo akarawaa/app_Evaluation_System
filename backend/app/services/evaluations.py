@@ -155,8 +155,10 @@ async def list_all(session: AsyncSession, user: CurrentUser) -> list[dict]:
     actor_emp = None if see_all else await _actor_employee_id(session, user.id)
     rows = (await session.execute(text(
         "select ev.id, ev.employee_id, ev.evaluator_id, ev.kind, ev.probation_checkpoint, ev.status, "
-        "ev.eval_score, ev.eval_max, ev.total_score, ev.percentage, ev.created_at "
+        "ev.eval_score, ev.eval_max, ev.total_score, ev.percentage, ev.created_at, "
+        "ack.decision as acknowledgement_decision, ack.signed_at as acknowledgement_signed_at "
         "from evaluations ev join employees emp on emp.id = ev.employee_id "
+        "left join evaluation_acknowledgements ack on ack.evaluation_id = ev.id "
         "where :see_all "                                  # HR / GM / MD / super_admin
         "   or emp.id = :actor_emp "                       # the subject themselves
         "   or emp.supervisor_id = :actor_emp "            # direct supervisor

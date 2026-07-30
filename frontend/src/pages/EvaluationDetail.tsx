@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
-import { apiDownload, apiGet, apiSend } from '../lib/api'
+import { apiDownload, apiGet, apiSend, apiSendForm } from '../lib/api'
 import type { EvalDetail } from '../types'
-import { STATUS_LABEL } from '../types'
+import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
 const SCORE_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
@@ -17,6 +17,8 @@ export default function EvaluationDetail() {
   const [comments, setComments] = useState<Record<number, string>>({})
   const [att, setAtt] = useState({ sick_days: 0, personal_days: 0, late_count: 0, late_minutes: 0, absent_days: 0 })
   const [attOverride, setAttOverride] = useState<number | ''>('')
+  const [ackForm, setAckForm] = useState({ decision: 'acknowledged', comment: '', witness_name: '', signed_at: '' })
+  const [ackFile, setAckFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -84,6 +86,17 @@ export default function EvaluationDetail() {
 
   const transition = (path: string, okMsg: string) =>
     act(() => apiSend('POST', `/api/evaluations/${id}/${path}`, {}), okMsg)
+
+  const saveAcknowledgement = () =>
+    act(async () => {
+      await apiSendForm(`/api/evaluations/${id}/acknowledge-paper`, {
+        decision: ackForm.decision,
+        comment: ackForm.comment || undefined,
+        witness_name: ackForm.witness_name || undefined,
+        signed_at: ackForm.signed_at || undefined,
+      }, ackFile)
+      setAckFile(null)
+    }, 'บันทึกการรับทราบแล้ว')
 
   if (!ev) {
     return (
@@ -273,6 +286,77 @@ export default function EvaluationDetail() {
                 <li key={i}>{a.step} — {a.decision === 'approved' ? 'อนุมัติ' : 'ตีกลับ'}{a.comment ? ` (${a.comment})` : ''}</li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {ev.status === 'finalized' && (
+          <section className="bg-white rounded-xl shadow p-5 text-sm">
+            <h3 className="font-medium text-slate-700 mb-2">การรับทราบของพนักงาน</h3>
+
+            {ev.acknowledgement ? (
+              <div className="space-y-1 text-slate-600">
+                <p>
+                  <b>{ACK_DECISION_LABEL[ev.acknowledgement.decision] ?? ev.acknowledgement.decision}</b>
+                  {' '}· {ev.acknowledgement.method === 'paper' ? 'ลงนามในเอกสาร' : 'ลงนามทางระบบ'}
+                  {' '}เมื่อ {new Date(ev.acknowledgement.signed_at).toLocaleDateString('th-TH')}
+                </p>
+                {ev.acknowledgement.witness_name && (
+                  <p className="text-xs text-slate-400">พยาน: {ev.acknowledgement.witness_name}</p>
+                )}
+                {ev.acknowledgement.comment && (
+                  <p className="text-xs text-slate-500">ความเห็นของผู้ถูกประเมิน: {ev.acknowledgement.comment}</p>
+                )}
+                {ev.acknowledgement.attachment_path && (
+                  <button
+                    onClick={() => apiDownload(`/api/evaluations/${id}/acknowledgement-attachment`, `acknowledgement-${id}`).catch((e) => setError(String(e)))}
+                    className="text-xs text-blue-600 hover:text-blue-800">ดาวน์โหลดไฟล์แนบ</button>
+                )}
+              </div>
+            ) : isHr ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">
+                  พิมพ์ PDF ให้พนักงานลงนาม แล้วบันทึกผลกลับเข้าระบบที่นี่ (ระบบรับทราบทางอีเมลจะเปิดใช้ในเฟสถัดไป)
+                </p>
+                <div className="flex flex-wrap gap-2 items-end">
+                  <label className="text-xs text-slate-500">ผลการลงนาม
+                    <select className="border rounded px-2 py-1 block mt-0.5"
+                      value={ackForm.decision}
+                      onChange={(e) => setAckForm((f) => ({ ...f, decision: e.target.value }))}>
+                      <option value="acknowledged">รับทราบ</option>
+                      <option value="acknowledged_disagreed">รับทราบ (มีความเห็นแย้ง)</option>
+                      <option value="refused">ปฏิเสธการลงนาม</option>
+                    </select>
+                  </label>
+                  <label className="text-xs text-slate-500">วันที่ลงนาม
+                    <input type="date" className="border rounded px-2 py-1 block mt-0.5"
+                      value={ackForm.signed_at}
+                      onChange={(e) => setAckForm((f) => ({ ...f, signed_at: e.target.value }))} />
+                  </label>
+                  {ackForm.decision === 'refused' && (
+                    <label className="text-xs text-slate-500">ชื่อพยาน
+                      <input className="border rounded px-2 py-1 block mt-0.5"
+                        value={ackForm.witness_name}
+                        onChange={(e) => setAckForm((f) => ({ ...f, witness_name: e.target.value }))} />
+                    </label>
+                  )}
+                  <label className="text-xs text-slate-500">ไฟล์แนบ (สแกน)
+                    <input type="file" className="block mt-0.5 text-xs"
+                      onChange={(e) => setAckFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+                <textarea
+                  className="w-full border rounded px-2 py-1 text-sm"
+                  placeholder="ความเห็นของผู้ถูกประเมิน (ถ้ามี)"
+                  rows={2}
+                  value={ackForm.comment}
+                  onChange={(e) => setAckForm((f) => ({ ...f, comment: e.target.value }))}
+                />
+                <button onClick={saveAcknowledgement} disabled={busy}
+                  className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกการรับทราบ</button>
+              </div>
+            ) : (
+              <p className="text-slate-400">ยังไม่มีบันทึกการรับทราบ</p>
+            )}
           </section>
         )}
       </main>

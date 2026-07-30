@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
-import { STATUS_LABEL } from '../types'
+import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
 export default function Evaluations() {
   const { me } = useAuth()
@@ -161,7 +161,7 @@ export default function Evaluations() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b">
-                <th className="py-1">พนักงาน</th><th>ชนิด</th><th>สถานะ</th><th>คะแนน</th><th>%</th>
+                <th className="py-1">พนักงาน</th><th>ชนิด</th><th>สถานะ</th><th>คะแนน</th><th>%</th><th>การรับทราบ</th>
               </tr>
             </thead>
             <tbody>
@@ -173,10 +173,16 @@ export default function Evaluations() {
                   <td>{STATUS_LABEL[ev.status] ?? ev.status}</td>
                   <td>{ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</td>
                   <td>{ev.percentage != null ? `${ev.percentage}%` : '—'}</td>
+                  <td>
+                    {ev.status !== 'finalized' ? <span className="text-slate-300">—</span>
+                      : ev.acknowledgement_decision
+                        ? <span className="text-green-700">{ACK_DECISION_LABEL[ev.acknowledgement_decision] ?? ev.acknowledgement_decision}</span>
+                        : <span className="text-amber-600">รอรับทราบ</span>}
+                  </td>
                 </tr>
               ))}
               {evals.length === 0 && (
-                <tr><td colSpan={5} className="py-3 text-slate-400">ยังไม่มีใบประเมิน</td></tr>
+                <tr><td colSpan={6} className="py-3 text-slate-400">ยังไม่มีใบประเมิน</td></tr>
               )}
             </tbody>
           </table>

@@ -47,6 +47,19 @@ export async function apiUpload<T>(path: string, file: File): Promise<T> {
   return (await res.json()) as T
 }
 
+export async function apiSendForm<T>(
+  path: string,
+  fields: Record<string, string | undefined>,
+  file?: File | null,
+): Promise<T> {
+  const form = new FormData()
+  Object.entries(fields).forEach(([k, v]) => { if (v !== undefined) form.append(k, v) })
+  if (file) form.append('file', file)
+  const res = await fetch(`${base}${path}`, { method: 'POST', headers: await authHeaders(), body: form })
+  if (!res.ok) throw new Error(await errText(res))
+  return (await res.json()) as T
+}
+
 export async function apiSend<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${base}${path}`, {
     method,

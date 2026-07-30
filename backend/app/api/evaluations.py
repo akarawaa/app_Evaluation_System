@@ -3,7 +3,7 @@ session (RLS-scoped); state transitions + authorization live in the service."""
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
@@ -16,6 +16,7 @@ from app.schemas.evaluation import (
     FinalizeIn,
     ScoresUpdate,
 )
+from app.services import acknowledgement as ack_svc
 from app.services import attendance_import as attendance_import_svc
 from app.services import evaluations as svc
 from app.services.audit import write_audit
@@ -193,3 +194,36 @@ async def finalize_evaluation(
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
     return await svc.finalize(session, user, eval_id, payload)
+
+
+@router.post("/{eval_id}/acknowledge-paper")
+async def acknowledge_paper(
+    eval_id: str,
+    decision: str = Form(...),
+    comment: Optional[str] = Form(None),
+    witness_name: Optional[str] = Form(None),
+    signed_at: Optional[date] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    """HR records that the employee acknowledged (or refused to acknowledge)
+    a printed copy in person. Electronic self-service acknowledgement is a
+    later phase."""
+    attachment_bytes = await file.read() if file else None
+    return await ack_svc.record_paper_acknowledgement(
+        session, user, eval_id,
+        decision=decision, comment=comment, witness_name=witness_name, signed_at=signed_at,
+        attachment_filename=file.filename if file else None,
+        attachment_bytes=attachment_bytes,
+    )
+
+
+@router.get("/{eval_id}/acknowledgement-attachment")
+async def acknowledgement_attachment(
+    eval_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> Response:
+    content, content_type = await ack_svc.get_attachment(session, user, eval_id)
+    return Response(content=content, media_type=content_type)

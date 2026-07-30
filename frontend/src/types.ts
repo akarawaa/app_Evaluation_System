@@ -95,6 +95,8 @@ export type EvalListItem = {
   eval_max: number | null
   total_score: number | null
   percentage: number | null
+  acknowledgement_decision: string | null
+  acknowledgement_signed_at: string | null
 }
 
 export type EvalItem = {
@@ -131,6 +133,17 @@ export type AttendanceDetail = {
   attendance_score_overridden: boolean
 }
 
+export type Acknowledgement = {
+  method: 'electronic' | 'paper'
+  decision: 'acknowledged' | 'acknowledged_disagreed' | 'refused'
+  comment: string | null
+  signed_at: string
+  witness_name: string | null
+  attachment_path: string | null
+  content_hash: string | null
+  created_at: string
+}
+
 export type EvalDetail = {
   id: string
   employee_id: string
@@ -148,6 +161,13 @@ export type EvalDetail = {
   comments: EvalComment[]
   attendance: AttendanceDetail | null
   approvals: EvalApproval[]
+  acknowledgement: Acknowledgement | null
+}
+
+export const ACK_DECISION_LABEL: Record<string, string> = {
+  acknowledged: 'รับทราบแล้ว',
+  acknowledged_disagreed: 'รับทราบแล้ว (มีความเห็นแย้ง)',
+  refused: 'ปฏิเสธการลงนาม',
 }
 
 export type AttendanceImportRowError = { row: number; emp_code: string | null; message: string }
