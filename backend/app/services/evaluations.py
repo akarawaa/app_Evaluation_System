@@ -91,14 +91,27 @@ async def get_detail(session: AsyncSession, eval_id: str) -> dict:
         "attendance_score, attendance_score_overridden "
         "from evaluation_attendance where evaluation_id = :id"
     ), {"id": eval_id})).mappings().first()
+    # actor_name: the signature block on the printed form needs a person's name,
+    # not a profile uuid. Prefer the linked employee record's real name and fall
+    # back to the profile display name (super_admin has no employee row).
     approvals = (await session.execute(text(
-        "select step, actor_id, decision, comment, decided_at from evaluation_approvals "
-        "where evaluation_id = :id order by decided_at"
+        "select a.step, a.actor_id, a.decision, a.comment, a.decided_at, "
+        "       coalesce(e.full_name, p.display_name) as actor_name "
+        "from evaluation_approvals a "
+        "left join profiles  p on p.id = a.actor_id "
+        "left join employees e on e.id = p.employee_id "
+        "where a.evaluation_id = :id order by a.decided_at"
     ), {"id": eval_id})).mappings().all()
+    acknowledgement = (await session.execute(text(
+        "select method, decision, comment, signed_at, witness_name, "
+        "       attachment_path, content_hash, created_at "
+        "from evaluation_acknowledgements where evaluation_id = :id"
+    ), {"id": eval_id})).mappings().first()
     ev["items"] = [dict(x) for x in items]
     ev["comments"] = [dict(x) for x in comments]
     ev["attendance"] = dict(attendance) if attendance else None
     ev["approvals"] = [dict(x) for x in approvals]
+    ev["acknowledgement"] = dict(acknowledgement) if acknowledgement else None
     return ev
 
 

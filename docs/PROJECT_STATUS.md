@@ -2,9 +2,9 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-07-16
-**Phase ปัจจุบัน:** Phase 1 — Foundation
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + **อัปเกรด Python 3.9→3.11 + ปิดช่องโหว่ dependency ทั้งหมด** เสร็จ+พิสูจน์ (pytest 81/81 · pip-audit 0 vulnerabilities) → เหลือรอ HR ตรวจ/ปรับถ้อยคำ BARS + ตั้งค่าสูตร attendance ตามนโยบายบริษัทจริง
+**อัปเดตล่าสุด:** 2026-07-30
+**Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + **ช่องลงนามรับทราบของพนักงาน (schema + PDF, รองรับทั้งอิเล็กทรอนิกส์และกระดาษ)** เสร็จ+พิสูจน์ (pytest 81/81) → เหลือ endpoint ให้พนักงานกดรับทราบจริง (รอตัดสินใจเรื่องอีเมล — ดูหัวข้อด้านล่าง) + รอ HR ตรวจ/ปรับถ้อยคำ BARS
 
 ---
 
@@ -87,7 +87,10 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
-0. **กำลังทำ: deploy pilot environment ฟรี** ให้หัวหน้างานทดลองใช้จริง (Supabase Cloud + Render + Vercel) — ดูขั้นตอนละเอียดที่ [docs/DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md), เตรียม `render.yaml` + `frontend/vercel.json` ไว้แล้ว รอผู้ใช้ทำขั้นที่ต้องสร้างบัญชี/กรอก secret เอง (Supabase project, GitHub repo, Render/Vercel signup)
+0. **กำลังทำ: การรับทราบผลของพนักงาน (employee acknowledgement)** — schema (`0018_employee_acknowledgement.sql`) + PDF ช่องลงนาม 5 ระดับเสร็จแล้ว (ดูหัวข้อ "ทำไปแล้ว" ด้านล่าง) เหลือ:
+   - **ตัดสินใจแล้ว**: ใช้ magic link ทางอีเมล (ไม่ต้องให้พนักงานทุกคนมีบัญชี/รหัสผ่าน) แทนการล็อกอินเต็มรูปแบบ ส่งผ่าน **Gmail ธรรมดา** (ไม่ใช่ Workspace) — ต้อง**แยกบัญชี Gmail ใหม่ต่างหากจากบัญชีที่ส่งสลิปเงินเดือน** (กันบัญชีโดนจำกัดจากการยิงเมลพร้อมกัน ~300 คน/บริษัทแล้วลากระบบสลิปพังไปด้วย), เปิด 2-Step Verification + สร้าง App Password
+   - ยังไม่ทำ: `POST /api/evaluations/{id}/acknowledge` (เฉพาะเจ้าของใบ, เฉพาะสถานะ `finalized`), บริการส่งอีเมล (backend ขอ magic link จาก Supabase admin API เองแล้วประกอบอีเมลไทยส่งผ่าน Gmail SMTP — ไม่ใช้เทมเพลตอีเมลของ Supabase ตรง ๆ), หน้าพนักงานกดรับทราบ (+ช่องความเห็นแย้ง), endpoint ให้ HR บันทึกรับทราบแบบกระดาษ+แนบสแกน, รายงาน "ปิดใบแล้วแต่ยังไม่รับทราบ"
+   - ยังไม่ตัดสินใจ: จะเพิ่ม second-factor ตอนกดรับทราบไหม (เช่นเลขบัตร ปชช. 4 ตัวท้าย) — ถ้าเอาต้องเพิ่มข้อมูลอ่อนไหวเข้าระบบอีก (PDPA)
 1. รอ HR: **เข้าไปตั้งค่าสูตร attendance ที่หน้า `/people` ตามนโยบายบริษัทจริง** (ตอนนี้ยังเป็นค่าเริ่มต้น 40/4/1/0.5/1 จนกว่า HR จะปรับ), ตรวจ/ปรับถ้อยคำ BARS anchors, เกณฑ์ probation ต่อ checkpoint — ส่งไฟล์ `exports/evaluation-criteria-bars.docx` ให้ตรวจแล้ว
 2. (ไอเดียถัดไป ยังไม่เริ่ม) ตัวกรอง export ตาม cycle_id ถ้าฟีเจอร์ evaluation_cycles เริ่มมีการใช้งานจริง (ตอนนี้ cycle_id ยังไม่มี UI สร้าง/เลือก cycle เลย)
 3. **(ตัดสินใจรอ) ขยาย audit log ให้ครอบคลุม "sensitive read" กว้างขึ้น** — ตอนนี้ audit ครอบ mutation ทุกจุด + export (PDF/Excel) + compare แล้ว แต่ยังไม่ครอบการเปิดดูใบประเมิน/พนักงานแบบเจาะจงทีละรายการ (`GET /api/evaluations/{id}`, `GET /api/employees/{id}`) ตามที่ `docs/LOGGING_AND_AUDIT.md` ระบุไว้เป็นเป้าหมาย Phase 1 (`view_employee`) — ยังไม่ทำเพราะจะเพิ่มปริมาณ write เข้า audit_logs ทุก GET request อย่างมีนัยสำคัญ ควรคุยกับทีมก่อนว่าต้องการระดับละเอียดแค่ไหน (ทุกครั้งที่เปิดดู vs. เฉพาะการ export/เปรียบเทียบแบบที่ทำไปแล้ว)
@@ -150,6 +153,21 @@
   - ผลลัพธ์: `pip-audit` จาก 35 รายการ → **0 known vulnerabilities**
   - พิสูจน์: สร้าง venv ใหม่จาก `requirements.txt` ที่แก้แล้ว รันเซิร์ฟเวอร์จริงขึ้นสำเร็จ (`/docs` 200), รัน pytest เต็มชุด **81/81 ผ่าน** ทั้งบน venv ใหม่ก่อน rename และหลัง rename เป็น `.venv` (กันกรณี path-dependent อะไรพลาด), `npm run build` ฝั่ง frontend ผ่าน (ไม่กระทบเพราะเป็นคนละ stack), ลบ venv เก่า (Python 3.9) ทิ้งหลังยืนยันว่าไม่ต้องใช้แล้ว
 
+- **Pilot deployment ขึ้น production จริง (Supabase Cloud + Render + Vercel) เสร็จ+พิสูจน์** — รายละเอียดครบใน [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md) รวมปัญหาที่เจอจริงระหว่างทำ (Render ไม่มี field `pythonVersion` ต้องใช้ env var แทน, direct DB connection เป็น IPv6-only ต้องเปลี่ยนไปใช้ Supavisor pooler, username ของ pooler ต้องมี project ref ต่อท้าย) →
+  - Production URLs: backend `https://e-appraisal-api.onrender.com`, frontend `https://app-evaluation-system.vercel.app`, Supabase project ref `avznzakoxpjsgmrxjjgs`
+  - สร้าง super_admin คนแรกของระบบจริงแล้ว (bootstrap ผ่าน SQL ตรง ๆ เพราะยังไม่มี super_admin คนไหนให้เรียก endpoint ปกติ — วิธีเดียวกับที่ `tests/conftest.py` ทำในเทส) — เก็บ credential ไว้กับผู้ใช้แล้ว ไม่บันทึกในเอกสารนี้
+  - **สร้างบริษัททดลอง "บริษัท ทดลอง จำกัด" (`demo-co`) พร้อมข้อมูลตัวอย่างเต็มสาย** ผ่าน API จริง (ไม่ใช่ยัด DB ตรง ๆ) ไว้ demo/ทดสอบ: สายบังคับบัญชา 4 ระดับ (ผจก.แผนก → หัวหน้างาน → พนักงาน 2 คน) มีบัญชีล็อกอินครบทุก role (HR/dept_manager/manager/md), ใบประเมินตัวอย่าง 2 ใบคนละสถานะ (annual ที่ submit แล้วรอผจก.แผนกอนุมัติ, probation checkpoint 30 วันที่ยังเป็นร่างพร้อมให้คะแนนสด) — credential อยู่กับผู้ใช้ ไม่บันทึกในเอกสารนี้เช่นกัน
+
+- **ช่องลงนามรับทราบของพนักงาน (employee acknowledgement) — schema + PDF เสร็จ+พิสูจน์, endpoint ยังไม่ทำ** →
+  - **ช่องว่างที่พบ**: ใบกระดาษเดิม (FMHR07) มีช่องลงนาม 5 ระดับ (พนักงาน→หัวหน้างาน→ผจก.แผนก→HR→MD) แต่ระบบเดิมทำแค่ 4 ช่องท้าย (สายอนุมัติ) — **ไม่มีการบันทึกว่าพนักงานเจ้าของใบเคยรับทราบผลเลย** ถือเป็นการถดถอยจากกระดาษเดิม ไม่ใช่แค่ฟีเจอร์ที่ยังไม่ทำ
+  - **`0018_employee_acknowledgement.sql`**: เพิ่ม `employees.email` (unique partial index ต่อ tenant กันอีเมลซ้ำระหว่างพนักงาน 2 คน) + ตาราง `evaluation_acknowledgements` (append-only เหมือน `evaluation_approvals`/`audit_logs` — select+insert เท่านั้น ไม่มี policy update/delete)
+  - **หลักการออกแบบสำคัญ — "รับทราบ" ≠ "เห็นด้วย"**: มี `decision` แยก 3 แบบ (`acknowledged`, `acknowledged_disagreed`, `refused`) และช่อง `comment` ให้พนักงานเขียนความเห็นแย้งได้โดยยังนับว่ารับทราบ — ตรงกับที่ใบกระดาษเดิมมีช่องความเห็นของผู้ถูกประเมินแยกจากช่องลงนาม (เหตุผล: ถ้าออกแบบให้ต้อง "เห็นด้วย" เท่านั้นถึงจะกดผ่านได้ จะมีปัญหาทันทีถ้าต้องใช้เป็นหลักฐานชั้นศาลแรงงาน)
+  - รองรับ 2 วิธี (`method`): **`electronic`** (พนักงานกดเอง มี `content_hash`/`ip`/`user_agent` เป็นหลักฐาน) และ **`paper`** (HR บันทึกแทนหลังเก็บลายเซ็นจริง มี `witness_name`/`attachment_path` สำหรับแนบสแกน) — `check` constraint กัน `decision='refused'` ผ่านทาง electronic (ปฏิเสธลงนามต้องมีพยานบันทึกแบบกระดาษเท่านั้น เพราะกดลิงก์ทางอิเล็กทรอนิกส์ = รับทราบโดยนิยาม)
+  - **`pdf.py`**: เพิ่มตารางลายเซ็น 5 แถวตามลำดับกระดาษเดิมเป๊ะ (พนักงาน→หัวหน้างาน→ผจก.แผนก→ผจก.แผนกบุคคล→กรรมการผู้จัดการ) ดึงชื่อจริงจาก `evaluation_approvals`/`evaluation_acknowledgements` — ช่องที่ยังไม่มีบันทึกเว้นว่าง (ไม่ใช่ "—") เพื่อให้พิมพ์แล้วเซ็นสดได้ทันที, ถ้ารับทราบทางอิเล็กทรอนิกส์แล้วพิมพ์ "รับทราบทางอิเล็กทรอนิกส์ เมื่อ [วันเวลา] · รหัสอ้างอิง [hash 12 ตัวแรก]" + ความเห็นแย้ง (ถ้ามี) ต่อท้าย, ถ้าปฏิเสธลงนามพิมพ์ข้อความ + ชื่อพยาน
+  - **ตัดสินใจเรื่องอีเมลแล้ว**: ใช้ magic link ผ่าน Gmail ธรรมดา (ไม่ใช่ Workspace) — **ต้องแยกบัญชี Gmail ใหม่จากบัญชีที่ส่งสลิปเงินเดือน** กันบัญชีโดนจำกัดจากการยิงอีเมลพร้อมกัน ~300 คน/บริษัทแล้วลากระบบสลิปพังไปด้วย (Gmail ธรรมดาจำกัด ~500 ผู้รับ/วัน, Workspace ~2,000/วัน)
+  - พิสูจน์: pytest 81/81 (schema เปลี่ยนไม่กระทบของเดิม) + สร้างใบประเมินจริงเดินครบสายอนุมัติแล้ว render PDF 2 กรณีเทียบกัน (ยังไม่รับทราบ vs. รับทราบพร้อมความเห็นแย้ง) ยืนยันด้วยภาพว่าช่องแสดงถูกต้องตามออกแบบ (ลบไฟล์ทดสอบทิ้งหลังตรวจแล้ว)
+  - **ยังไม่ทำ** (รอ): `POST /api/evaluations/{id}/acknowledge`, บริการส่งอีเมล, หน้าพนักงานกดรับทราบ, endpoint บันทึกรับทราบแบบกระดาษ+แนบสแกน, รายงาน HR "ปิดใบแล้วแต่ยังไม่รับทราบ" — ดู "ทำต่อ" ด้านบน
+
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
 npx supabase start          # Postgres @54322, API @54321, Studio @54323
@@ -188,6 +206,7 @@ npx supabase stop           # ตอนเลิกงาน
 - กติกา/DoD: `CLAUDE.md`
 
 ## 📌 ค้าง/ความเสี่ยงที่ต้องจำ
-- สูตรคะแนน attendance (max 40) ยังไม่รู้ — ต้องถาม HR (Phase 2)
-- BARS anchors (desc_1..5) ยังเป็น placeholder — HR ต้องเติมเนื้อหาจริง
+- สูตรคะแนน attendance มีค่าเริ่มต้นแล้ว (40/4/1/0.5/1) และ HR ปรับเองได้ที่หน้า `/people` — แต่ยังไม่มีใครยืนยันว่าค่าเริ่มต้นนี้ตรงนโยบายบริษัทจริง
+- BARS anchors (desc_1..5) ยังเป็น placeholder — ส่ง `exports/evaluation-criteria-bars.docx` ให้ HR ตรวจแล้ว รอผลตรวจกลับมา
+- การรับทราบผลของพนักงาน (schema+PDF พร้อมแล้ว, endpoint ยังไม่ทำ) ต้องแยกบัญชี Gmail สำหรับส่งอีเมลออกจากบัญชีที่ส่งสลิปเงินเดือน — ห้ามใช้ร่วมกันเด็ดขาด
 - ยืนยันว่า "500 คน" เป็นต่อ tenant หรือรวมทุก tenant (กระทบ capacity planning)
