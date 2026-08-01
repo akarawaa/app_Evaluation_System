@@ -2,9 +2,9 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-07-30
+**อัปเดตล่าสุด:** 2026-08-01
 **Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + **ย้ายจุดรับทราบเข้าไปในสายอนุมัติ (ผจก.แผนกอนุมัติ → พนักงานเซ็น → GM/MD อนุมัติ)** เสร็จ+พิสูจน์ (pytest 94/94 · browser จริง) → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance + **ยังไม่ deploy งานล่าสุดขึ้น production**
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ (deploy ขึ้น production แล้ว ยืนยันด้วย gate จริง 409→200) + **ลืมรหัสผ่าน (Supabase Auth recovery) + แจ้งเตือนอีเมลเมื่อเปลี่ยนรหัสผ่าน + โครง SMTP** เสร็จ+พิสูจน์ (pytest 96/96 · browser จริงผ่าน Mailpit) → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance + **ยังไม่ deploy งานลืมรหัสผ่าน/SMTP ขึ้น production** (ต้องตั้งค่า Gmail App Password + Supabase Cloud dashboard ก่อน)
 
 ---
 
@@ -87,6 +87,10 @@
   - พิสูจน์: pytest 56/56 (+assert desc snapshot ไหลถึง get_detail) + browser (สร้างใบ→เกณฑ์ BARS แสดง 5 ระดับ, เลือก 3.5→ไฮไลต์ระดับ 3+4) + PDF จริงมีบรรทัด "ระดับ N:" ทุกข้อ
 
 ## 🔜 ทำต่อ (ถัดไป)
+- **🙋 ต้องทำเอง (ก่อน deploy ลืมรหัสผ่าน/SMTP ขึ้น production)** — โค้ดพร้อมแล้ว ทดสอบผ่าน local ครบ (pytest 96/96 + browser จริงผ่าน Mailpit) แต่ยัง deploy ไม่ได้จนกว่าจะมีของ 3 อย่างนี้:
+   1. **สร้าง Gmail App Password**: เปิด 2-Step Verification บนบัญชี Gmail ที่จะใช้ส่งเมล (แนะนำแยกบัญชีใหม่ ไม่ใช้ร่วมกับบัญชีที่ส่งสลิปเงินเดือน — เหตุผลเดียวกับที่คุยไว้ตอนวางแผนอีเมลรับทราบ) → สร้าง App Password 16 หลัก
+   2. **Render**: เพิ่ม env var `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=<gmail address>`, `SMTP_PASSWORD=<App Password>`, `MAIL_FROM=<gmail address>` (ประกาศไว้ใน `render.yaml` แล้วเป็น `sync: false` — กรอกค่าจริงบนหน้า Render โดยตรง)
+   3. **Supabase Cloud dashboard**: Authentication → URL Configuration → เพิ่ม `https://app-evaluation-system.vercel.app/reset-password` เข้า **Redirect URLs** (ไม่ทำจุดนี้ ลิงก์ในอีเมลจะเด้งกลับไปหน้า default แทนหน้า reset-password ของเรา — เจอปัญหานี้จริงตอนทดสอบ local ต้องแก้ config เดียวกันนี้ฝั่ง local ด้วย) และปรับ Auth settings ให้ตรงกับ `supabase/config.toml` ที่แก้ไว้ (secure password change เปิด, rate limit 60s, OTP/reset link หมดอายุ 30 นาที — dashboard cloud ตั้งแยกจาก local ไม่ได้ sync อัตโนมัติ)
 0. **(เฟสถัดไป — ตัดสินใจแล้วว่าไม่ทำตอนนี้) การรับทราบทางอีเมล (magic link)** — ทำแบบกระดาษก่อนตามที่ตกลง (ดูหัวข้อ "ทำไปแล้ว" ด้านล่าง ว่าทำอะไรไปแล้วบ้าง) เมื่อจะกลับมาทำต่อ:
    - **ตัดสินใจไว้ล่วงหน้าแล้ว** (ยังไม่เปลี่ยน แค่ยังไม่เริ่ม): ใช้ magic link ทางอีเมล (ไม่ต้องให้พนักงานทุกคนมีบัญชี/รหัสผ่าน) ส่งผ่าน **Gmail ธรรมดา** (ไม่ใช่ Workspace) — ต้อง**แยกบัญชี Gmail ใหม่ต่างหากจากบัญชีที่ส่งสลิปเงินเดือน** (กันบัญชีโดนจำกัดจากการยิงเมลพร้อมกัน ~300 คน/บริษัทแล้วลากระบบสลิปพังไปด้วย), เปิด 2-Step Verification + สร้าง App Password
    - ยังไม่ทำ: `POST /api/evaluations/{id}/acknowledge` แบบ electronic (ตอนนี้มีแต่ `acknowledge-paper` สำหรับ HR บันทึกแทน — ดูด้านล่าง), บริการส่งอีเมล, หน้าพนักงานกดรับทราบเอง (ตอนนี้พนักงานทั่วไปยังไม่มีบัญชีล็อกอินตามการตัดสินใจ Phase 1 เดิม)
@@ -194,6 +198,16 @@ py -3.11 -m venv .venv && .venv/Scripts/python -m pip install -r requirements.tx
 # รัน API test 7/7 (อีก terminal): bash backend/tests/test_api.sh
 npx supabase stop           # ตอนเลิกงาน
 ```
+
+- **ลืมรหัสผ่าน + แจ้งเตือนเปลี่ยนรหัสผ่าน + โครง SMTP เสร็จ+พิสูจน์ (local) — ยังไม่ deploy production** →
+  - **ใช้กลไก password recovery ของ Supabase Auth ตรง ๆ ไม่สร้างเอง** — ปลอดภัยกว่าและตรง NIST SP 800-63B/OWASP ASVS โดยดีไซน์อยู่แล้ว (token ใช้ครั้งเดียว, ไม่รั่วว่าอีเมลมีอยู่จริงไหม) แค่ปรับค่าตั้งต้นที่หลวมเกินไป
+  - **`supabase/config.toml`**: `secure_password_change = true` (บังคับ reauth/session ใหม่ก่อนเปลี่ยนรหัส), `max_frequency = "60s"` (เดิม 1s แทบไม่จำกัดอัตราเลย — กัน spam/enumeration), `otp_expiry = 1800` (เดิม 1 ชม. → 30 นาที ลดเวลาที่ลิงก์ค้างในอีเมลเป็นความเสี่ยง), เพิ่ม `additional_redirect_urls` ให้ครอบ `/reset-password` ของ frontend dev — **เจอ bug จริงระหว่างทดสอบ**: ไม่เพิ่ม redirect URL ตรงนี้ ลิงก์ในอีเมลจะเด้งไปหน้า default (`site_url`) แทนหน้า reset-password ของเรา ต้องแก้ config ฝั่งนี้เสมอเวลาย้ายโดเมน (local→cloud ก็ต้องทำซ้ำใน dashboard)
+  - **`services/email.py`** ใหม่: ส่งอีเมลของเราเอง (ไม่ใช่อีเมล recovery ที่ Supabase ส่งเอง) ผ่าน SMTP ตรง ๆ (`smtplib`, รันใน thread แยกกันบล็อก event loop) — ถ้ายังไม่ตั้งค่า SMTP (`SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` ว่าง) จะ log warning แล้วข้ามเงียบ ๆ **ไม่ทำให้ request ที่เรียกมาพัง** (การเปลี่ยนรหัสผ่านสำเร็จไปแล้วที่ฝั่ง Supabase ก่อนจะถึงจุดนี้ ไม่ควรให้เมลแจ้งเตือนที่ยังไม่พร้อมมาบล็อกผู้ใช้)
+  - **`POST /api/auth/password-changed`**: frontend เรียกทันทีหลัง `supabase.auth.updateUser({password})` สำเร็จ — เขียน audit log (`password_changed`, เข้าระบบ audit เดียวกับทุก action สำคัญ) + ส่งอีเมล "รหัสผ่านของคุณถูกเปลี่ยนแล้ว หากไม่ใช่คุณให้ติดต่อ HR ทันที" ไปที่อีเมลเดิม (มาตรการ PDPA: เจ้าของบัญชีต้องรับรู้เมื่อข้อมูลสำคัญของตัวเองถูกแก้ไข แม้ตัวเองเป็นคนกดเอง)
+  - Frontend: `ForgotPassword.tsx` (กรอกอีเมล → ข้อความเดียวกันเสมอไม่ว่าอีเมลมีจริงหรือไม่ — กัน enumeration ที่ฝั่ง UI ด้วย ไม่ใช่แค่ backend), `ResetPassword.tsx` (ตั้งรหัสใหม่ + ยืนยัน, เช็ค session ที่ Supabase ฝังมาจากลิงก์อีเมลก่อนให้กรอกฟอร์ม), ลิงก์ "ลืมรหัสผ่าน?" ใน `Login.tsx`
+  - **ขอบเขต**: ใช้ได้กับ HR/หัวหน้างาน/ผจก.แผนก/GM-MD/super_admin เท่านั้น เพราะพนักงานทั่วไปยังไม่มีบัญชีล็อกอินตามการตัดสินใจ Phase 1 เดิม
+  - พิสูจน์: pytest 3 เคสใหม่ (`test_password_reset.py`: endpoint ต้อง auth, เขียน audit log ถูก tenant) — pytest 96/96 + **เดินสด end-to-end จริงผ่าน browser**: ขอลิงก์ → เจอในกล่องเมลจริงของ local stack (Mailpit) → ตามลิงก์ → เจอ bug redirect URL ผิด (แก้แล้วตามข้างบน) → ตั้งรหัสใหม่ → auto-login เข้า dashboard → ยืนยันด้วย curl ว่ารหัสเก่าใช้ไม่ได้แล้ว (400) รหัสใหม่ใช้ได้ (200) → เช็ค log backend เห็น `smtp_not_configured` warning ตามคาด (ไม่ error, ไม่บล็อก request)
+  - **ยังไม่ deploy production** — ต้องมี Gmail App Password + ตั้งค่า Render env vars + Supabase Cloud dashboard (redirect URL, auth settings) ก่อน — ดู "ทำต่อ" ด้านบน
 
 ## 🔒 การตัดสินใจที่ล็อกแล้ว (อย่าเปลี่ยนโดยไม่คุย)
 | หัวข้อ | ค่าที่เลือก |

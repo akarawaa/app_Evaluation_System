@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
 
@@ -49,6 +49,9 @@ export default function Login() {
         >
           {busy ? '...' : 'เข้าสู่ระบบ'}
         </button>
+        <p className="text-center text-sm">
+          <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800">ลืมรหัสผ่าน?</Link>
+        </p>
       </form>
     </div>
   )

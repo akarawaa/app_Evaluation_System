@@ -13,10 +13,12 @@ from app.schemas.employee_import import ImportResult
 from app.schemas.tenant import InviteUserIn
 from app.schemas.user import UserOut
 from app.services import attendance_formula as attendance_formula_svc
+from app.services import email as email_svc
 from app.services import employees as emp_svc
 from app.services import employee_import as import_svc
 from app.services import tenant_admin as tenant_admin_svc
 from app.services import users as users_svc
+from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api")
 
@@ -46,6 +48,29 @@ async def me(
         "roles": user.roles,
         "employee_id": employee_id,
     }
+
+
+@router.post("/auth/password-changed", status_code=status.HTTP_204_NO_CONTENT)
+async def password_changed(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> None:
+    """The frontend calls this right after Supabase Auth confirms a password
+    change (self-service reset or in-app change). Supabase owns the actual
+    credential; this just gives the change an entry in *our* audit trail and
+    fires the "was this you?" notice, same as any other security-relevant
+    event in the system already gets logged."""
+    row = (await session.execute(
+        text("select display_name from profiles where id = :id"), {"id": user.id}
+    )).first()
+    display_name = row[0] if row else None
+
+    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+                      action="password_changed", entity_type="profiles", entity_id=user.id)
+
+    if user.email:
+        subject, body = email_svc.password_changed_email(display_name)
+        await email_svc.send_email(user.email, subject, body)
 
 
 @router.get("/employees", response_model=list[EmployeeOut])
