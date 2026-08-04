@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import CurrentUserBadge from '../components/CurrentUserBadge'
+import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
 
@@ -14,7 +14,7 @@ type Employee = {
 }
 
 export default function Dashboard() {
-  const { me, signOut } = useAuth()
+  const { me } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -26,23 +26,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
-        <h1 className="font-semibold text-slate-800">E-Appraisal</h1>
-        <nav className="flex items-center gap-4">
-          <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
-          <Link to="/evaluations" className="text-sm text-blue-600 hover:text-blue-800">ใบประเมินผล</Link>
-          {isHrAdmin && (
-            <Link to="/people" className="text-sm text-blue-600 hover:text-blue-800">พนักงาน &amp; สาขา</Link>
-          )}
-          {me?.is_super_admin && (
-            <Link to="/tenants" className="text-sm text-blue-600 hover:text-blue-800">จัดการบริษัท</Link>
-          )}
-          <CurrentUserBadge />
-          <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
-            ออกจากระบบ
-          </button>
-        </nav>
-      </header>
+      <AppHeader />
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">
         {error && <p className="text-red-600">{error}</p>}
@@ -52,9 +36,8 @@ export default function Dashboard() {
             <h2 className="font-medium mb-2 text-slate-700">ผู้ใช้ปัจจุบัน</h2>
             <dl className="text-sm text-slate-600 space-y-1">
               <div>อีเมล: {me.email}</div>
-              <div>
-                company_id: <code>{me.company_id ?? '—'}</code>
-              </div>
+              <div>บริษัท: {me.company_name ?? (me.is_super_admin ? 'ทุกบริษัท (super_admin)' : '—')}</div>
+              {me.branch_name && <div>สาขา: {me.branch_name}</div>}
               <div>
                 roles: {me.roles.join(', ') || '—'}
                 {me.is_super_admin ? ' (super_admin)' : ''}

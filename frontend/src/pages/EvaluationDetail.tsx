@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
-import CurrentUserBadge from '../components/CurrentUserBadge'
+import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend, apiSendForm } from '../lib/api'
 import type { EvalDetail } from '../types'
@@ -12,7 +12,6 @@ const SCORE_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 export default function EvaluationDetail() {
   const { me } = useAuth()
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [ev, setEv] = useState<EvalDetail | null>(null)
   const [scores, setScores] = useState<Record<string, number>>({})
   const [comments, setComments] = useState<Record<number, string>>({})
@@ -116,27 +115,21 @@ export default function EvaluationDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
-        <h1 className="font-semibold text-slate-800">รายละเอียดใบประเมิน</h1>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
-            className="text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
-          <CurrentUserBadge />
-          <button onClick={() => navigate('/evaluations')} className="text-sm text-slate-600 hover:text-slate-900">← กลับ</button>
-        </div>
-      </header>
+      <AppHeader title="รายละเอียดใบประเมิน" />
 
       <main className="p-6 space-y-5 max-w-3xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+        <section className="bg-white rounded-xl shadow p-5 flex flex-wrap gap-x-8 gap-y-2 text-sm items-center">
           <div><span className="text-slate-500">สถานะ:</span> <b>{STATUS_LABEL[ev.status] ?? ev.status}</b></div>
           <div><span className="text-slate-500">ชนิด:</span> {ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
           <div><span className="text-slate-500">คะแนน:</span> {ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</div>
           <div><span className="text-slate-500">รวม+มาลา:</span> {ev.total_score ?? '—'}</div>
           <div><span className="text-slate-500">คิดเป็น:</span> {ev.percentage != null ? `${ev.percentage}%` : '—'}</div>
+          <button
+            onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
+            className="ml-auto text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
         </section>
 
         {categories.map(([order, cat]) => (

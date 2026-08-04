@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
-import CurrentUserBadge from '../components/CurrentUserBadge'
+import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
@@ -81,15 +81,7 @@ export default function Evaluations() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
-        <h1 className="font-semibold text-slate-800">ใบประเมินผล</h1>
-        <nav className="flex items-center gap-4">
-          <Link to="/evaluations/compare" className="text-sm text-blue-600 hover:text-blue-800">เปรียบเทียบผลประเมิน</Link>
-          <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
-          <CurrentUserBadge />
-          <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
-        </nav>
-      </header>
+      <AppHeader title="ใบประเมินผล" />
 
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}

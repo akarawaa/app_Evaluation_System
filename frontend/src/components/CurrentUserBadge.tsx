@@ -21,6 +21,8 @@ export default function CurrentUserBadge() {
     <span className="text-xs text-slate-500 whitespace-nowrap">
       {me.email ?? '—'}
       {roleLabels.length > 0 && <span className="text-slate-400"> · {roleLabels.join(', ')}</span>}
+      {me.company_name && <span className="text-slate-400"> · {me.company_name}</span>}
+      {me.branch_name && <span className="text-slate-400"> ({me.branch_name})</span>}
     </span>
   )
 }

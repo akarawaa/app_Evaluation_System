@@ -2,6 +2,8 @@ export type Me = {
   id: string
   email: string | null
   company_id: string | null
+  company_name: string | null
+  branch_name: string | null
   is_super_admin: boolean
   roles: string[]
   employee_id: string | null

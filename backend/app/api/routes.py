@@ -30,20 +30,35 @@ async def me(
 ) -> dict:
     # Own employee_id lets the frontend precisely gate evaluation actions
     # (e.g. "am I this evaluation's evaluator?") instead of relying on role
-    # alone. super_admin isn't tied to an employee row, so skip the lookup.
+    # alone. company/branch name are shown in the header so a person who
+    # holds accounts in more than one tenant can tell which one they're in.
     employee_id = None
-    if not user.is_super_admin:
-        row = (
-            await session.execute(
-                text("select employee_id from profiles where id = :id"), {"id": user.id}
-            )
-        ).first()
-        employee_id = str(row[0]) if row and row[0] is not None else None
+    company_name = None
+    branch_name = None
+    row = (
+        await session.execute(
+            text(
+                "select p.employee_id, c.name as company_name, b.name as branch_name "
+                "from profiles p "
+                "left join companies c on c.id = p.company_id "
+                "left join employees e on e.id = p.employee_id "
+                "left join branches b on b.id = e.branch_id "
+                "where p.id = :id"
+            ),
+            {"id": user.id},
+        )
+    ).first()
+    if row:
+        employee_id = str(row[0]) if row[0] is not None else None
+        company_name = row[1]
+        branch_name = row[2]
 
     return {
         "id": user.id,
         "email": user.email,
         "company_id": user.company_id,
+        "company_name": company_name,
+        "branch_name": branch_name,
         "is_super_admin": user.is_super_admin,
         "roles": user.roles,
         "employee_id": employee_id,

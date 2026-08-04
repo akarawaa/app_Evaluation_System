@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
-import CurrentUserBadge from '../components/CurrentUserBadge'
+import AppHeader from '../components/AppHeader'
 import { apiGet, apiSend } from '../lib/api'
 import type { TenantDetail as TenantDetailType } from '../types'
 import { INVITE_ROLES, ROLE_LABEL } from '../types'
@@ -10,7 +10,6 @@ const emptyInvite = { email: '', password: '', role: 'manager' }
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [tenant, setTenant] = useState<TenantDetailType | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -63,13 +62,7 @@ export default function TenantDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
-        <h1 className="font-semibold text-slate-800">{tenant.name}</h1>
-        <div className="flex items-center gap-4">
-          <CurrentUserBadge />
-          <button onClick={() => navigate('/tenants')} className="text-sm text-slate-600 hover:text-slate-900">← รายชื่อบริษัท</button>
-        </div>
-      </header>
+      <AppHeader title={tenant.name} />
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
