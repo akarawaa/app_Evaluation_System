@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend } from '../lib/api'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
@@ -85,6 +86,7 @@ export default function Evaluations() {
         <nav className="flex items-center gap-4">
           <Link to="/evaluations/compare" className="text-sm text-blue-600 hover:text-blue-800">เปรียบเทียบผลประเมิน</Link>
           <Link to="/inbox" className="text-sm text-blue-600 hover:text-blue-800">งานที่รอฉัน</Link>
+          <CurrentUserBadge />
           <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
         </nav>
       </header>

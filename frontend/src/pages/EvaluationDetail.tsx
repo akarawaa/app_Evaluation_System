@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend, apiSendForm } from '../lib/api'
 import type { EvalDetail } from '../types'
@@ -121,6 +122,7 @@ export default function EvaluationDetail() {
           <button
             onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
             className="text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
+          <CurrentUserBadge />
           <button onClick={() => navigate('/evaluations')} className="text-sm text-slate-600 hover:text-slate-900">← กลับ</button>
         </div>
       </header>

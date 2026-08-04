@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { apiGet, apiSend } from '../lib/api'
 import type { TenantDetail as TenantDetailType } from '../types'
 import { INVITE_ROLES, ROLE_LABEL } from '../types'
@@ -64,7 +65,10 @@ export default function TenantDetail() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">{tenant.name}</h1>
-        <button onClick={() => navigate('/tenants')} className="text-sm text-slate-600 hover:text-slate-900">← รายชื่อบริษัท</button>
+        <div className="flex items-center gap-4">
+          <CurrentUserBadge />
+          <button onClick={() => navigate('/tenants')} className="text-sm text-slate-600 hover:text-slate-900">← รายชื่อบริษัท</button>
+        </div>
       </header>
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">

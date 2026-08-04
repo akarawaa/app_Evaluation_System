@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { apiGet, apiSend } from '../lib/api'
 import type { Tenant } from '../types'
 
@@ -40,7 +41,10 @@ export default function Tenants() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">จัดการบริษัท (Tenants)</h1>
-        <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
+        <div className="flex items-center gap-4">
+          <CurrentUserBadge />
+          <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
+        </div>
       </header>
 
       <main className="p-6 space-y-6 max-w-4xl mx-auto">

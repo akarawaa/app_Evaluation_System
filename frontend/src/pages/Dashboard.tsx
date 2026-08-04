@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
 
@@ -36,6 +37,7 @@ export default function Dashboard() {
           {me?.is_super_admin && (
             <Link to="/tenants" className="text-sm text-blue-600 hover:text-blue-800">จัดการบริษัท</Link>
           )}
+          <CurrentUserBadge />
           <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
             ออกจากระบบ
           </button>

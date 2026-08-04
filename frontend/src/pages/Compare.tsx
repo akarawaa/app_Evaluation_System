@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { apiGet } from '../lib/api'
 import type { CompareResult, Employee, EvalListItem } from '../types'
 import { STATUS_LABEL } from '../types'
@@ -56,7 +57,10 @@ export default function Compare() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">เปรียบเทียบผลประเมิน</h1>
-        <Link to="/evaluations" className="text-sm text-slate-600 hover:text-slate-900">← ใบประเมินผล</Link>
+        <div className="flex items-center gap-4">
+          <CurrentUserBadge />
+          <Link to="/evaluations" className="text-sm text-slate-600 hover:text-slate-900">← ใบประเมินผล</Link>
+        </div>
       </header>
 
       <main className="p-6 space-y-6 max-w-5xl mx-auto">

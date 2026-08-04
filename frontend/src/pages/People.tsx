@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import CurrentUserBadge from '../components/CurrentUserBadge'
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
 import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
 import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL } from '../types'
@@ -154,7 +155,10 @@ export default function People() {
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b px-6 py-3 flex justify-between items-center">
         <h1 className="font-semibold text-slate-800">จัดการพนักงาน &amp; สาขา</h1>
-        <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
+        <div className="flex items-center gap-4">
+          <CurrentUserBadge />
+          <Link to="/" className="text-sm text-slate-600 hover:text-slate-900">← แดชบอร์ด</Link>
+        </div>
       </header>
 
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
