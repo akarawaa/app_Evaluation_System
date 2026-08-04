@@ -11,6 +11,13 @@
 - `super_admin` ข้าม tenant ได้เฉพาะผ่าน security-definer function ที่ตรวจ role ชัดเจน
 - **Test บังคับ:** negative test — user tenant A เรียก resource tenant B ต้องได้ 404/403
 
+### Multi-company account switching (`0021_multi_company_access.sql`)
+1 login ผูกได้หลายบริษัท (`user_roles.company_id` ต่อ role) — `profiles.company_id` คือ "บริษัทที่ active อยู่ตอนนี้" ไม่ใช่บริษัทตายตัว
+- **สลับได้เฉพาะบริษัทที่มี role อยู่แล้วเท่านั้น:** `app.switch_active_company()` เป็น `SECURITY DEFINER`, ตรวจ `user_roles` ของ `sub` claim (จาก JWT ที่ตรวจลายเซ็นแล้วเท่านั้น ไม่รับ client-supplied id ใด ๆ) ก่อน update — สลับไปบริษัทที่ไม่มีสิทธิ์ → คืน `false` → route ตอบ 403 เสมอ ไม่มี path ที่ bypass การเช็คนี้ได้
+- **`roles` claim ต้อง scope ตามบริษัท active เท่านั้น:** เดิม auth hook (`0007`) รวม role code ข้ามบริษัททั้งหมดของ profile — แก้แล้วให้ filter `ur.company_id = v_company_id` ไม่งั้น role ของบริษัทที่ไม่ได้ active อยู่จะหลุดเข้า JWT ได้ (มี negative test คุมไว้ที่ `test_roles_claim_is_scoped_to_active_company`)
+- **มอบสิทธิ์บริษัทที่สองได้เฉพาะ `super_admin`:** ป้องกัน hr_admin ของบริษัท A ให้สิทธิ์ตัวเองเข้าบริษัท B โดยที่ B ไม่ยินยอม (privilege escalation) — endpoint `/api/admin/tenants/{id}/users/grant` gate ด้วย `require_roles()` (super_admin only) เหมือน endpoint admin อื่น ๆ
+- **audit_logs ยึด company ขาออกเสมอ** (ไม่ใช่ปลายทาง) เพราะ RLS ของ audit_logs เอง (`company_id = current_company_id()`) ยังอ้างอิง JWT เดิมก่อน refresh — ป้องกันไม่ให้เขียน audit log ข้าม company ที่ยังไม่มีสิทธิ์จริงในเซสชันนั้น
+
 ## A02 — Cryptographic Failures
 - **In transit:** HTTPS/TLS ทุก endpoint (บังคับ), HSTS
 - **At rest:** Supabase Postgres เข้ารหัส disk; ข้อมูลอ่อนไหว (PDPA) ไม่เก็บเกินจำเป็น

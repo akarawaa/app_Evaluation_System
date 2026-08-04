@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
+import CompanySwitcher from './CompanySwitcher'
 import CurrentUserBadge from './CurrentUserBadge'
 
 type NavItem = {
@@ -43,6 +44,7 @@ export default function AppHeader({ title }: { title?: string }) {
           {title && <span className="text-sm text-slate-600">{title}</span>}
         </div>
         <div className="flex items-center gap-4">
+          <CompanySwitcher />
           <CurrentUserBadge />
           <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
             ออกจากระบบ

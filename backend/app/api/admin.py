@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
 from app.core.security import CurrentUser, require_roles
-from app.schemas.tenant import InviteUserIn, TenantCreate, TenantOut, TenantStatusUpdate
+from app.schemas.tenant import GrantAccessIn, InviteUserIn, TenantCreate, TenantOut, TenantStatusUpdate
 from app.services import tenant_admin as tenant_svc
 from app.services.provisioning import create_tenant
 
@@ -65,4 +65,16 @@ async def invite_user(
         session, user.id, company_id,
         payload.email, payload.password, payload.role,
         str(payload.employee_id) if payload.employee_id else None,
+    )
+
+
+@router.post("/tenants/{company_id}/users/grant", status_code=status.HTTP_201_CREATED)
+async def grant_company_access(
+    company_id: str,
+    payload: GrantAccessIn,
+    user: CurrentUser = Depends(require_roles()),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await tenant_svc.grant_company_access(
+        session, user.id, company_id, payload.email, payload.role,
     )

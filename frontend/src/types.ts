@@ -9,6 +9,12 @@ export type Me = {
   employee_id: string | null
 }
 
+export type MyCompany = {
+  company_id: string
+  company_name: string
+  roles: string[]
+}
+
 export type AttendanceFormula = {
   full_score: number
   coef_absent: number

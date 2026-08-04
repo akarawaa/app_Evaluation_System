@@ -26,3 +26,12 @@ class InviteUserIn(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: str = Field(pattern=r"^(hr_admin|manager|dept_manager|md|gm|employee)$")
     employee_id: Optional[UUID] = None
+
+
+class GrantAccessIn(BaseModel):
+    email: str = Field(min_length=3, max_length=200)
+    role: str = Field(pattern=r"^(hr_admin|manager|dept_manager|md|gm|employee)$")
+
+
+class ActiveCompanyIn(BaseModel):
+    company_id: UUID

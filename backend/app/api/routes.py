@@ -10,9 +10,10 @@ from app.schemas.attendance_formula import AttendanceFormulaIn, AttendanceFormul
 from app.schemas.branch import BranchCreate, BranchOut
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.schemas.employee_import import ImportResult
-from app.schemas.tenant import InviteUserIn
+from app.schemas.tenant import ActiveCompanyIn, InviteUserIn
 from app.schemas.user import UserOut
 from app.services import attendance_formula as attendance_formula_svc
+from app.services import company_access as company_access_svc
 from app.services import email as email_svc
 from app.services import employees as emp_svc
 from app.services import employee_import as import_svc
@@ -63,6 +64,28 @@ async def me(
         "roles": user.roles,
         "employee_id": employee_id,
     }
+
+
+@router.get("/me/companies")
+async def my_companies(
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    """Every company this login holds a role in -- lets the frontend decide
+    whether to show a company switcher at all (nothing renders for the
+    common case of exactly one company)."""
+    return await company_access_svc.list_my_companies(session)
+
+
+@router.post("/me/active-company")
+async def set_active_company(
+    payload: ActiveCompanyIn,
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await company_access_svc.switch_active_company(
+        session, user.id, user.company_id, str(payload.company_id),
+    )
 
 
 @router.post("/auth/password-changed", status_code=status.HTTP_204_NO_CONTENT)

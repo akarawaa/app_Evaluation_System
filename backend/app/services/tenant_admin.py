@@ -112,3 +112,44 @@ async def invite_user(
         after={"email": email, "role": role_code},
     )
     return {"user_id": uid, "email": email, "role": role_code}
+
+
+async def grant_company_access(
+    session: AsyncSession, actor_id: str, company_id: str, email: str, role_code: str,
+) -> dict:
+    """Give an EXISTING account a role in another company (super_admin only --
+    see app.find_profile_by_email / app.switch_active_company in
+    0021_multi_company_access.sql). A brand-new person still goes through
+    invite_user; this is only for someone who already has a login."""
+    if role_code not in INVITABLE_ROLES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"invalid role: {role_code}")
+
+    company = (await session.execute(
+        text("select id from companies where id = :id"), {"id": company_id}
+    )).first()
+    if company is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "tenant not found")
+
+    profile_id = (await session.execute(
+        text("select app.find_profile_by_email(:email)"), {"email": email}
+    )).scalar_one_or_none()
+    if profile_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no existing account for that email")
+
+    existing = (await session.execute(text(
+        "select 1 from user_roles where profile_id = :pid and company_id = :cid"
+    ), {"pid": profile_id, "cid": company_id})).first()
+    if existing is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "already has a role in this company")
+
+    await session.execute(text(
+        "insert into user_roles (profile_id, role_id, company_id) "
+        "select :id, id, :cid from roles where code = :code"
+    ), {"id": profile_id, "cid": company_id, "code": role_code})
+
+    await write_audit(
+        session, company_id=company_id, actor_id=actor_id,
+        action="role_granted", entity_type="profiles", entity_id=profile_id,
+        after={"email": email, "role": role_code},
+    )
+    return {"user_id": str(profile_id), "email": email, "role": role_code}

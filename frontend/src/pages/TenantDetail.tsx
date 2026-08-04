@@ -7,6 +7,7 @@ import type { TenantDetail as TenantDetailType } from '../types'
 import { INVITE_ROLES, ROLE_LABEL } from '../types'
 
 const emptyInvite = { email: '', password: '', role: 'manager' }
+const emptyGrant = { email: '', role: 'hr_admin' }
 
 export default function TenantDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +16,7 @@ export default function TenantDetail() {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [invite, setInvite] = useState(emptyInvite)
+  const [grant, setGrant] = useState(emptyGrant)
 
   const load = () => apiGet<TenantDetailType>(`/api/admin/tenants/${id}`).then(setTenant).catch((e) => setError(String(e)))
 
@@ -45,6 +47,23 @@ export default function TenantDetail() {
       setInvite(emptyInvite)
       await load()
       setMsg('เชิญผู้ใช้ใหม่แล้ว')
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendGrant = async () => {
+    if (!grant.email.trim()) return
+    setBusy(true); setError(null); setMsg(null)
+    try {
+      await apiSend('POST', `/api/admin/tenants/${id}/users/grant`, {
+        email: grant.email.trim(), role: grant.role,
+      })
+      setGrant(emptyGrant)
+      await load()
+      setMsg('ให้สิทธิ์ผู้ใช้เดิมเข้าบริษัทนี้แล้ว — เขาจะเห็นตัวเลือกสลับบริษัทในเมนูด้านบนหลัง login ใหม่')
     } catch (e) {
       setError(String(e))
     } finally {
@@ -108,6 +127,31 @@ export default function TenantDetail() {
           <button onClick={sendInvite} disabled={busy || !invite.email.trim() || invite.password.length < 8}
             className="mt-4 bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
             เชิญเข้าระบบ
+          </button>
+        </section>
+
+        <section className="bg-white rounded-xl shadow p-5">
+          <h2 className="font-medium mb-1 text-slate-700">ให้สิทธิ์ผู้ใช้เดิมเข้าบริษัทนี้</h2>
+          <p className="text-xs text-slate-500 mb-3">
+            สำหรับคนที่มีบัญชี login อยู่แล้ว (เช่น ดูแลหลายบริษัท) — ไม่สร้างบัญชีใหม่ แค่เพิ่มสิทธิ์ในบริษัทนี้
+          </p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <label>
+              <span className="block text-slate-500 mb-0.5">อีเมลบัญชีที่มีอยู่แล้ว</span>
+              <input type="email" className="border rounded px-2 py-1 w-full" value={grant.email}
+                onChange={(e) => setGrant((f) => ({ ...f, email: e.target.value }))} />
+            </label>
+            <label>
+              <span className="block text-slate-500 mb-0.5">บทบาทในบริษัทนี้</span>
+              <select className="border rounded px-2 py-1 w-full" value={grant.role}
+                onChange={(e) => setGrant((f) => ({ ...f, role: e.target.value }))}>
+                {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+            </label>
+          </div>
+          <button onClick={sendGrant} disabled={busy || !grant.email.trim()}
+            className="mt-4 bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+            ให้สิทธิ์เข้าบริษัทนี้
           </button>
         </section>
 
