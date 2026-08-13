@@ -7,9 +7,26 @@ import { useAuth } from '../context/AuthContext'
  * semantics (super_admin always passes). Renders a clear "no access" state
  * instead of a page full of 403s from every API call underneath it. */
 export default function RequireRole({ anyOf, children }: { anyOf: string[]; children: ReactNode }) {
-  const { me, meLoading } = useAuth()
+  const { me, meLoading, meError, refreshMe } = useAuth()
 
   if (meLoading) return <div className="p-8 text-slate-500">กำลังโหลด…</div>
+
+  // me is null either because loading it failed (network/cold-start -- not a
+  // real permissions answer) or because the user genuinely has no role here.
+  // Only the latter is "no permission".
+  if (me === null && meError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="text-center space-y-2">
+          <p className="text-slate-600">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง</p>
+          <p className="text-slate-400 text-xs">{meError}</p>
+          <button onClick={() => refreshMe()} className="text-blue-600 hover:text-blue-800 text-sm">
+            ลองใหม่
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const allowed = !!me && (me.is_super_admin || anyOf.some((r) => me.roles.includes(r)))
   if (!allowed) {

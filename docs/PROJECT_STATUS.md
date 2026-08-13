@@ -2,7 +2,7 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-08-04
+**อัปเดตล่าสุด:** 2026-08-13
 **Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
 **สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, pytest 102/102 → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
 
@@ -207,6 +207,15 @@ npx supabase stop           # ตอนเลิกงาน
   - **Deploy ขึ้น production แล้ว** (Gmail App Password + Render env vars + Supabase Cloud dashboard redirect URL/auth settings ตั้งครบ) — ยืนยันด้วยการส่งอีเมล recovery จริงไปที่กล่องเมลจริงของผู้ใช้ ได้รับแล้ว
 
 - **แก้บั๊ก `POST /api/users/invite` (และ provisioning) 500 บน production เป็นระยะ ๆ** → root cause: `auth_admin.create_auth_user` เรียก GoTrue admin API ครั้งแรกหลัง Render container เพิ่งตื่นจาก sleep (free tier) บางครั้งเชื่อมต่อไม่ติดรอบแรก (DNS/TLS ยังไม่ warm) — เพิ่ม retry 1 ครั้งเมื่อเจอ `httpx.RequestError` ระดับ connection (ไม่ใช่ retry ทุก error) + log รายละเอียด exception จริงไว้ (`auth_admin_connect_failed`/`auth_admin_create_user_failed`) เผื่อเกิดซ้ำจะวินิจฉัยได้เร็วขึ้น — pytest 96/96 ผ่าน, deploy แล้ว
+
+- **แก้บั๊ก frontend "คุณไม่มีสิทธิ์เข้าถึงหน้านี้" / รายการว่างเปล่า สลับกันไปมาแบบสุ่ม บน production** (ผู้ใช้ report: login ด้วย super_admin แล้วบางครั้งหน้า Tenants ขึ้น "ไม่มีสิทธิ์" บางครั้งขึ้นแต่รายชื่อบริษัทว่างเปล่าทั้งที่สร้างไปแล้ว) → root cause เดียวกับบั๊ก invite ด้านบน (Render cold start ทำให้ `fetch` จากฝั่งเบราว์เซอร์ throw `TypeError: Failed to fetch` ตรง ๆ ไม่ใช่ HTTP error) แต่เป็นคนละจุด (ฝั่ง frontend เรียก backend โดยตรง ไม่ใช่ backend เรียก GoTrue) และมี**บั๊กจริงซ้อนอยู่**: `AuthContext.loadMe()` เดิม catch error แล้ว set `me = null` เฉย ๆ ไม่แยกแยะ "โหลดไม่สำเร็จเพราะเน็ตมีปัญหา" ออกจาก "ไม่มีสิทธิ์จริง ๆ" ทำให้ `RequireRole` เข้าใจผิดว่าไม่มีสิทธิ์ทั้งที่จริงแค่ /api/me ล้มเหลว —
+  - `frontend/src/lib/api.ts`: เพิ่ม `fetchWithRetry` (retry 2 ครั้ง, delay 3s/6s) ครอบทุกฟังก์ชันเรียก API (`apiGet`/`apiSend`/`apiUpload`/`apiSendForm`/`apiDownload`) — retry เฉพาะตอน fetch throw ระดับ connection เท่านั้น ไม่ retry เมื่อ server ตอบ HTTP error จริง (คำตอบจริงจาก server ที่ยัง live ไม่ควรถูกยิงซ้ำ)
+  - `frontend/src/context/AuthContext.tsx`: เพิ่ม `meError` state แยกจาก `me` — เก็บ error message เมื่อ `/api/me` โหลดไม่สำเร็จ
+  - `frontend/src/components/RequireRole.tsx`: เช็ค `meError` ก่อน — ถ้าเป็น error จากการโหลดไม่สำเร็จ ขึ้น "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง" + ปุ่มลองใหม่ แทนที่ "คุณไม่มีสิทธิ์เข้าถึงหน้านี้" (ข้อความหลังสงวนไว้เฉพาะกรณีมี `me` แต่ role ไม่พอจริง ๆ)
+  - พิสูจน์: tsc ผ่าน (ไม่มี type error), จำลอง cold-start จริงในเครื่อง local (stop backend process → reload หน้า Tenants → เห็นข้อความ "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้" ตามคาดหลัง retry ครบ ~9s แทนที่ "ไม่มีสิทธิ์" แบบเดิม → start backend กลับ → กดปุ่ม "ลองใหม่" → โหลดข้อมูลกลับมาปกติ)
+  - deploy ขึ้น production แล้ว (push master → Vercel auto-deploy)
+
+- **แก้ปัญหา "ลืมรหัสผ่านไม่มีเมลมา"** → root cause คนละเรื่องกับบั๊กด้านบน: **Supabase Cloud free tier auto-pause โปรเจกต์เมื่อไม่มี API activity นานพอ** — ตอน pause อยู่ GoTrue (Auth) จะไม่ทำงาน ส่งอีเมล recovery ไม่ได้เลย (ไม่ error ให้เห็นฝั่ง UI ด้วย เพราะ UI ตั้งใจให้ขึ้นข้อความเดียวกันเสมอกันเดา enumeration) — แก้โดยเข้า Supabase dashboard กด **Resume/Restore project** แล้วอีเมล recovery ส่งได้ปกติ **ไม่ต้องแก้โค้ด** — จดไว้เป็นความรู้สำหรับ pilot ที่ยังไม่มี traffic สม่ำเสมอ: ถ้าเจออาการคล้ายกัน (ไม่ใช่แค่ reset password — login/ทุกอย่างที่พึ่ง Supabase Auth จะพังหมดถ้า pause) ให้เช็คสถานะโปรเจกต์ใน dashboard ก่อนเป็นอันดับแรก
 
 - **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา เสร็จ+พิสูจน์+deploy** → เดิมแต่ละหน้ามี `<header>` ของตัวเอง ลิงก์ย้อนกลับไม่เหมือนกัน ("← แดชบอร์ด"/"← ใบประเมินผล"/"← กลับ") และไม่เห็นเมนูหลักทั้งหมดพร้อมกัน (ผู้ใช้แจ้งว่าสับสน) →
   - `frontend/src/components/AppHeader.tsx` ใหม่ — nav เดียวใช้ร่วมทุกหน้า แสดงเมนูตามสิทธิ์ผู้ใช้ (`NAV_ITEMS` + `show()`), ไฮไลต์หน้าปัจจุบันด้วยเส้นใต้ (`isActive()`), ปุ่ม "ออกจากระบบ" อยู่จุดเดียวกดได้ทุกหน้า — แทนที่ `<header>` เดิมใน `Dashboard/Evaluations/Inbox/People/Tenants/TenantDetail/Compare/EvaluationDetail.tsx` ทั้งหมด

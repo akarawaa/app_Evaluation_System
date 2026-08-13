@@ -11,6 +11,7 @@ type AuthValue = {
   me: Me | null
   loading: boolean
   meLoading: boolean
+  meError: string | null
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signOut: () => Promise<void>
   refreshMe: () => Promise<void>
@@ -24,13 +25,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null)
   const [loading, setLoading] = useState(true)
   const [meLoading, setMeLoading] = useState(true)
+  // Distinct from "me is null because you're logged out" -- RequireRole must
+  // not render "ไม่มีสิทธิ์เข้าถึงหน้านี้" when /api/me merely failed to load
+  // (e.g. backend cold start), or a connection blip looks like a permissions
+  // problem to the user.
+  const [meError, setMeError] = useState<string | null>(null)
 
   const loadMe = async () => {
     setMeLoading(true)
     try {
       setMe(await apiGet<Me>('/api/me'))
-    } catch {
+      setMeError(null)
+    } catch (e) {
       setMe(null)
+      setMeError(String(e))
     } finally {
       setMeLoading(false)
     }
@@ -78,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, me, loading, meLoading, signIn, signOut, refreshMe: loadMe, switchCompany }}>
+    <AuthContext.Provider value={{ session, me, loading, meLoading, meError, signIn, signOut, refreshMe: loadMe, switchCompany }}>
       {children}
     </AuthContext.Provider>
   )
