@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
 import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
@@ -12,6 +13,16 @@ const emptyForm = {
 const emptyInvite = { email: '', password: '', role: 'manager' }
 
 export default function People() {
+  // Present only when a super_admin arrived here from a company's own page
+  // ("จัดการพนักงาน & สาขาของบริษัทนี้" in TenantDetail.tsx) -- an hr_admin's
+  // own company_id already scopes everything via RLS with no param needed.
+  // company_name is display-only convenience carried in the URL; it is never
+  // trusted for any filtering, only company_id is (and only server-side).
+  const [params] = useSearchParams()
+  const companyId = params.get('company_id')
+  const companyName = params.get('company_name')
+  const qs = companyId ? `?company_id=${companyId}` : ''
+
   const [employees, setEmployees] = useState<Employee[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [users, setUsers] = useState<TenantUser[]>([])
@@ -39,13 +50,15 @@ export default function People() {
   const [savingFormula, setSavingFormula] = useState(false)
 
   const load = () => Promise.all([
-    apiGet<Employee[]>('/api/employees').then(setEmployees),
-    apiGet<Branch[]>('/api/branches').then(setBranches),
-    apiGet<TenantUser[]>('/api/users').then(setUsers),
-    apiGet<AttendanceFormula>('/api/settings/attendance-formula').then(setFormula),
+    apiGet<Employee[]>(`/api/employees${qs}`).then(setEmployees),
+    apiGet<Branch[]>(`/api/branches${qs}`).then(setBranches),
+    apiGet<TenantUser[]>(`/api/users${qs}`).then(setUsers),
+    // attendance formula/import aren't scoped to a specific company yet --
+    // out of scope for cross-company browsing for now, hidden below instead.
+    companyId ? Promise.resolve() : apiGet<AttendanceFormula>('/api/settings/attendance-formula').then(setFormula),
   ]).catch((e) => setError(String(e)))
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [companyId])
 
   const run = async (fn: () => Promise<unknown>, okMsg: string) => {
     setBusy(true); setError(null); setMsg(null)
@@ -56,12 +69,12 @@ export default function People() {
 
   const addBranch = () => {
     if (!newBranch.trim()) return
-    run(async () => { await apiSend('POST', '/api/branches', { name: newBranch.trim() }); setNewBranch('') }, 'เพิ่มสาขาแล้ว')
+    run(async () => { await apiSend('POST', `/api/branches${qs}`, { name: newBranch.trim() }); setNewBranch('') }, 'เพิ่มสาขาแล้ว')
   }
 
   const saveBranchRename = () => {
     if (!renaming || !renaming.name.trim()) return
-    run(async () => { await apiSend('PATCH', `/api/branches/${renaming.id}`, { name: renaming.name.trim() }); setRenaming(null) }, 'แก้ไขชื่อสาขาแล้ว')
+    run(async () => { await apiSend('PATCH', `/api/branches/${renaming.id}${qs}`, { name: renaming.name.trim() }); setRenaming(null) }, 'แก้ไขชื่อสาขาแล้ว')
   }
 
   const startEdit = (emp: Employee) => {
@@ -87,14 +100,14 @@ export default function People() {
       manager_id: form.manager_id || null,
     }
     if (editingId) {
-      run(async () => { await apiSend('PATCH', `/api/employees/${editingId}`, payload); cancelEdit() }, 'แก้ไขพนักงานแล้ว')
+      run(async () => { await apiSend('PATCH', `/api/employees/${editingId}${qs}`, payload); cancelEdit() }, 'แก้ไขพนักงานแล้ว')
     } else {
-      run(async () => { await apiSend('POST', '/api/employees', payload); setForm(emptyForm) }, 'เพิ่มพนักงานแล้ว')
+      run(async () => { await apiSend('POST', `/api/employees${qs}`, payload); setForm(emptyForm) }, 'เพิ่มพนักงานแล้ว')
     }
   }
 
   const toggleStatus = (emp: Employee) =>
-    run(() => apiSend('PATCH', `/api/employees/${emp.id}`, { status: emp.status === 'active' ? 'inactive' : 'active' }),
+    run(() => apiSend('PATCH', `/api/employees/${emp.id}${qs}`, { status: emp.status === 'active' ? 'inactive' : 'active' }),
       emp.status === 'active' ? 'ปิดใช้งานแล้ว' : 'เปิดใช้งานแล้ว')
 
   const supervisorCandidates = employees.filter((e) => e.level === 'supervisor' && e.id !== editingId)
@@ -144,19 +157,27 @@ export default function People() {
   const sendInvite = () => {
     if (!invite.email.trim() || invite.password.length < 8) return
     run(async () => {
-      await apiSend('POST', '/api/users/invite', { email: invite.email.trim(), password: invite.password, role: invite.role })
+      await apiSend('POST', `/api/users/invite${qs}`, { email: invite.email.trim(), password: invite.password, role: invite.role })
       setInvite(emptyInvite)
     }, 'เชิญผู้ใช้เข้าระบบแล้ว')
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader title="จัดการพนักงาน & สาขา" />
+      <AppHeader title={companyName ? `จัดการพนักงาน & สาขา — ${companyName}` : 'จัดการพนักงาน & สาขา'} />
 
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
+        {companyId && (
+          <p className="text-xs bg-blue-50 text-blue-700 rounded px-3 py-2">
+            กำลังจัดการข้อมูลของบริษัท <strong>{companyName ?? companyId}</strong> ในฐานะ super_admin —
+            การนำเข้าไฟล์ CSV และตั้งสูตรคะแนนการมา-ลา ยังต้องให้ hr_admin ของบริษัทนี้ทำเองในหน้านี้โดยตรง (login เป็น hr_admin)
+          </p>
+        )}
 
+        {!companyId && (
+        <>
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-1 text-slate-700">นำเข้าพนักงานจากไฟล์</h2>
           <p className="text-xs text-slate-500 mb-3">
@@ -313,6 +334,8 @@ export default function People() {
             </div>
           )}
         </section>
+        </>
+        )}
 
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">สาขา</h2>

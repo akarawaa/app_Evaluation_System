@@ -1,6 +1,8 @@
 """Phase 1 API surface (thin). Every DB call goes through the tenant session,
 so RLS scopes results to the caller's company automatically."""
-from fastapi import APIRouter, Depends, Response, UploadFile, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +24,20 @@ from app.services import users as users_svc
 from app.services.audit import write_audit
 
 router = APIRouter(prefix="/api")
+
+
+def _resolve_company(user: CurrentUser, company_id: Optional[str]) -> Optional[str]:
+    """super_admin may pass company_id explicitly to browse a specific tenant's
+    employees/branches/users (see TenantDetail's "จัดการพนักงาน & สาขา" link) --
+    RLS bypasses entirely for super_admin so this is the only thing scoping the
+    query, unlike hr_admin whose own company_id already scopes everything via
+    RLS with no filter needed. Nobody else may pass this param -- it would
+    otherwise be a direct cross-tenant read/write."""
+    if company_id is None:
+        return None
+    if not user.is_super_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "only super_admin may specify company_id")
+    return company_id
 
 
 @router.get("/me")
@@ -112,17 +128,22 @@ async def password_changed(
 
 
 @router.get("/employees", response_model=list[EmployeeOut])
-async def list_employees(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    return await emp_svc.list_employees(session)
+async def list_employees(
+    company_id: Optional[str] = Query(default=None),
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    return await emp_svc.list_employees(session, _resolve_company(user, company_id))
 
 
 @router.post("/employees", response_model=EmployeeOut, status_code=status.HTTP_201_CREATED)
 async def create_employee(
     payload: EmployeeCreate,
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await emp_svc.create_employee(session, user, payload)
+    return await emp_svc.create_employee(session, user, payload, _resolve_company(user, company_id))
 
 
 @router.get("/employees/import-template")
@@ -152,19 +173,22 @@ async def import_employees(
 @router.get("/employees/{employee_id}", response_model=EmployeeOut)
 async def get_employee(
     employee_id: str,
+    company_id: Optional[str] = Query(default=None),
+    user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await emp_svc.get_employee(session, employee_id)
+    return await emp_svc.get_employee(session, employee_id, _resolve_company(user, company_id))
 
 
 @router.patch("/employees/{employee_id}", response_model=EmployeeOut)
 async def update_employee(
     employee_id: str,
     payload: EmployeeUpdate,
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await emp_svc.update_employee(session, user, employee_id, payload)
+    return await emp_svc.update_employee(session, user, employee_id, payload, _resolve_company(user, company_id))
 
 
 @router.get("/templates")
@@ -182,48 +206,58 @@ async def list_templates(session: AsyncSession = Depends(get_tenant_session)) ->
 
 
 @router.get("/branches", response_model=list[BranchOut])
-async def list_branches(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    return await emp_svc.list_branches(session)
+async def list_branches(
+    company_id: Optional[str] = Query(default=None),
+    user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    return await emp_svc.list_branches(session, _resolve_company(user, company_id))
 
 
 @router.post("/branches", response_model=BranchOut, status_code=status.HTTP_201_CREATED)
 async def create_branch(
     payload: BranchCreate,
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await emp_svc.create_branch(session, user, payload.name)
+    return await emp_svc.create_branch(session, user, payload.name, _resolve_company(user, company_id))
 
 
 @router.patch("/branches/{branch_id}", response_model=BranchOut)
 async def update_branch(
     branch_id: str,
     payload: BranchCreate,
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    return await emp_svc.update_branch(session, user, branch_id, payload.name)
+    return await emp_svc.update_branch(session, user, branch_id, payload.name, _resolve_company(user, company_id))
 
 
 @router.get("/users", response_model=list[UserOut])
 async def list_users(
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> list[dict]:
-    return await users_svc.list_users(session)
+    return await users_svc.list_users(session, _resolve_company(user, company_id))
 
 
 @router.post("/users/invite", status_code=status.HTTP_201_CREATED)
 async def invite_user(
     payload: InviteUserIn,
+    company_id: Optional[str] = Query(default=None),
     user: CurrentUser = Depends(require_roles("hr_admin")),
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
-    # Self-service: hr_admin invites into their OWN tenant only — company_id
-    # comes from the verified JWT, never accepted from the request body, so
-    # there is no way to target another company through this endpoint.
+    # Self-service: hr_admin invites into their OWN tenant only. super_admin
+    # may target a specific tenant via company_id (see _resolve_company) --
+    # never accepted from anyone else, so there is no way to target another
+    # company through this endpoint otherwise.
+    target_company = _resolve_company(user, company_id) or user.company_id
     return await tenant_admin_svc.invite_user(
-        session, user.id, user.company_id,
+        session, user.id, target_company,
         payload.email, payload.password, payload.role,
         str(payload.employee_id) if payload.employee_id else None,
     )

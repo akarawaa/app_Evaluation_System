@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
 import AppHeader from '../components/AppHeader'
 import { apiGet, apiSend } from '../lib/api'
@@ -97,10 +97,18 @@ export default function TenantDetail() {
               </span>
             </div>
           </div>
-          <button onClick={toggleStatus} disabled={busy}
-            className={`text-sm rounded px-4 py-1.5 text-white disabled:opacity-50 ${tenant.status === 'active' ? 'bg-red-600' : 'bg-green-600'}`}>
-            {tenant.status === 'active' ? 'ระงับการใช้งาน' : 'เปิดใช้งานอีกครั้ง'}
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/people?company_id=${tenant.id}&company_name=${encodeURIComponent(tenant.name)}`}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              จัดการพนักงาน & สาขาของบริษัทนี้ →
+            </Link>
+            <button onClick={toggleStatus} disabled={busy}
+              className={`text-sm rounded px-4 py-1.5 text-white disabled:opacity-50 ${tenant.status === 'active' ? 'bg-red-600' : 'bg-green-600'}`}>
+              {tenant.status === 'active' ? 'ระงับการใช้งาน' : 'เปิดใช้งานอีกครั้ง'}
+            </button>
+          </div>
         </section>
 
         <section className="bg-white rounded-xl shadow p-5">

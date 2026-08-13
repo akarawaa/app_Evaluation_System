@@ -18,6 +18,13 @@
 - **มอบสิทธิ์บริษัทที่สองได้เฉพาะ `super_admin`:** ป้องกัน hr_admin ของบริษัท A ให้สิทธิ์ตัวเองเข้าบริษัท B โดยที่ B ไม่ยินยอม (privilege escalation) — endpoint `/api/admin/tenants/{id}/users/grant` gate ด้วย `require_roles()` (super_admin only) เหมือน endpoint admin อื่น ๆ
 - **audit_logs ยึด company ขาออกเสมอ** (ไม่ใช่ปลายทาง) เพราะ RLS ของ audit_logs เอง (`company_id = current_company_id()`) ยังอ้างอิง JWT เดิมก่อน refresh — ป้องกันไม่ให้เขียน audit log ข้าม company ที่ยังไม่มีสิทธิ์จริงในเซสชันนั้น
 
+### super_admin ดูข้อมูลพนักงาน/สาขา/user แยกตามบริษัท (`/api/employees`, `/api/branches`, `/api/users`, `/api/users/invite`)
+`is_super_admin()` bypass RLS ทั้งหมดตามดีไซน์ — endpoint พวกนี้เดิมพึ่ง RLS กรอง company ให้โดยนัย (ใช้ได้กับ hr_admin เพราะ company_id ของตัวเองคือ tenant ที่ดูแลอยู่แล้ว) แต่สำหรับ super_admin กลายเป็นดึงข้อมูล**ทุกบริษัทมารวมกันในลิสต์เดียวไม่มีทางแยก** — พบจากการทดสอบจริงของผู้ใช้ (หน้า "พนักงาน & สาขา" ปนพนักงาน/user จากหลายบริษัทไม่มีคอลัมน์บอกบริษัท)
+- **แก้โดย explicit `company_id` query param** (pattern เดียวกับ `tenant_admin.py` ที่ใช้กับ super_admin cross-tenant มาก่อนแล้ว) — `_resolve_company()` ใน `routes.py`: ถ้ามี `company_id` แต่ผู้เรียกไม่ใช่ super_admin → 403 ทันที (กัน hr_admin ใช้ param นี้สอดแนมบริษัทอื่น); ถ้าไม่ส่งมาเลย พฤติกรรมเดิมไม่เปลี่ยน (hr_admin ยังพึ่ง RLS implicit ตามเดิม)
+- **UI**: nav "พนักงาน & สาขา" เอาออกจาก super_admin แล้ว (เหลือ hr_admin เท่านั้น) — super_admin เข้าถึงต่อบริษัทผ่านปุ่ม "จัดการพนักงาน & สาขาของบริษัทนี้" ใน `TenantDetail.tsx` เท่านั้น ส่ง `company_id` มาใน URL เสมอ ไม่มีทางเข้าแบบไม่ระบุบริษัท
+- **ขอบเขตที่ตั้งใจไม่ครอบคลุม**: import พนักงาน/attendance CSV และตั้งสูตรคะแนนการมา-ลา ยังไม่รับ `company_id` explicit — ซ่อน UI ส่วนนี้ไว้เมื่อ super_admin เข้าผ่าน `?company_id=` (ต้องให้ hr_admin ของบริษัทนั้น login เองทำแทน) กันไม่ให้เขียนข้อมูลเข้าบริษัท Platform ของ super_admin โดยไม่ตั้งใจ
+- พิสูจน์: pytest 102/102 ผ่าน (ไม่มี regression), ทดสอบจริงผ่าน browser (สร้าง 2 บริษัท คนละพนักงาน → เข้าดูแยกกันถูกต้อง, เชิญ user ผ่านหน้า Company A → ยืนยันด้วย SQL ว่า `profiles.company_id` ตรงกับ Company A ไม่ใช่ platform tenant), ทดสอบ negative ผ่าน curl (hr_admin ส่ง `?company_id=` ของบริษัทอื่น → 403 ตามคาด)
+
 ## A02 — Cryptographic Failures
 - **In transit:** HTTPS/TLS ทุก endpoint (บังคับ), HSTS
 - **At rest:** Supabase Postgres เข้ารหัส disk; ข้อมูลอ่อนไหว (PDPA) ไม่เก็บเกินจำเป็น

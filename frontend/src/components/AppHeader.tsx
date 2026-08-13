@@ -20,8 +20,12 @@ const NAV_ITEMS: NavItem[] = [
   },
   { to: '/evaluations/compare', label: 'เปรียบเทียบผล', show: () => true, isActive: (p) => p === '/evaluations/compare' },
   {
+    // hr_admin only -- their own company_id scopes this page unambiguously
+    // via RLS. super_admin has no single "own company" for this page to mean
+    // anything (their company_id is the reserved platform tenant), so they
+    // reach it per-company instead, from a company's own page in "จัดการบริษัท".
     to: '/people', label: 'พนักงาน & สาขา',
-    show: (me) => !!me && (me.is_super_admin || me.roles.includes('hr_admin')),
+    show: (me) => !!me && me.roles.includes('hr_admin'),
     isActive: (p) => p === '/people',
   },
   {

@@ -30,8 +30,13 @@ left join employees mgr on mgr.id = e.manager_id
 """
 
 
-async def list_employees(session: AsyncSession) -> list[dict]:
-    rows = (await session.execute(text(_LIST_SQL + " order by e.emp_code"))).mappings().all()
+async def list_employees(session: AsyncSession, company_id: Optional[str] = None) -> list[dict]:
+    # company_id explicit (super_admin cross-tenant browsing, see routes.py's
+    # _resolve_company) rather than relying on implicit RLS scoping -- RLS
+    # bypasses entirely for super_admin, so without this filter the query
+    # would merge every tenant's employees into one undifferentiated list.
+    sql = _LIST_SQL + (" where e.company_id = :cid" if company_id else "") + " order by e.emp_code"
+    rows = (await session.execute(text(sql), {"cid": company_id} if company_id else {})).mappings().all()
     return [dict(r) for r in rows]
 
 
@@ -61,7 +66,8 @@ async def _validate_refs(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{label} not found")
 
 
-async def create_employee(session: AsyncSession, user: CurrentUser, payload) -> dict:
+async def create_employee(session: AsyncSession, user: CurrentUser, payload, company_id: Optional[str] = None) -> dict:
+    cid = company_id or user.company_id
     await _validate_refs(
         session, employee_id=None, branch_id=payload.branch_id,
         supervisor_id=payload.supervisor_id, manager_id=payload.manager_id,
@@ -72,7 +78,7 @@ async def create_employee(session: AsyncSession, user: CurrentUser, payload) -> 
         "values (:cid, :branch_id, :emp_code, :full_name, :position, :level, :sup, :mgr) "
         "returning id"
     ), {
-        "cid": user.company_id,
+        "cid": cid,
         "branch_id": str(payload.branch_id) if payload.branch_id else None,
         "emp_code": payload.emp_code,
         "full_name": payload.full_name,
@@ -83,22 +89,24 @@ async def create_employee(session: AsyncSession, user: CurrentUser, payload) -> 
     })).mappings().one()
 
     detail = await get_employee(session, str(row["id"]))
-    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+    await write_audit(session, company_id=cid, actor_id=user.id,
                       action="create", entity_type="employees", entity_id=row["id"], after=detail)
     return detail
 
 
-async def get_employee(session: AsyncSession, employee_id: str) -> dict:
-    row = (await session.execute(
-        text(_LIST_SQL + " where e.id = :id"), {"id": employee_id}
-    )).mappings().first()
+async def get_employee(session: AsyncSession, employee_id: str, company_id: Optional[str] = None) -> dict:
+    sql = _LIST_SQL + " where e.id = :id" + (" and e.company_id = :cid" if company_id else "")
+    params = {"id": employee_id, **({"cid": company_id} if company_id else {})}
+    row = (await session.execute(text(sql), params)).mappings().first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "employee not found")
     return dict(row)
 
 
-async def update_employee(session: AsyncSession, user: CurrentUser, employee_id: str, payload) -> dict:
-    before = await get_employee(session, employee_id)
+async def update_employee(
+    session: AsyncSession, user: CurrentUser, employee_id: str, payload, company_id: Optional[str] = None,
+) -> dict:
+    before = await get_employee(session, employee_id, company_id)
     fields = payload.model_dump(exclude_unset=True)
     if not fields:
         return before
@@ -124,40 +132,42 @@ async def update_employee(session: AsyncSession, user: CurrentUser, employee_id:
         text(f"update employees set {', '.join(set_clauses)} where id = :id"),  # noqa: S608
         params,
     )
-    after = await get_employee(session, employee_id)
-    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+    after = await get_employee(session, employee_id, company_id)
+    await write_audit(session, company_id=company_id or user.company_id, actor_id=user.id,
                       action="update", entity_type="employees", entity_id=employee_id,
                       before=before, after=after)
     return after
 
 
-async def list_branches(session: AsyncSession) -> list[dict]:
-    rows = (await session.execute(
-        text("select id, name from branches order by name")
-    )).mappings().all()
+async def list_branches(session: AsyncSession, company_id: Optional[str] = None) -> list[dict]:
+    sql = "select id, name from branches" + (" where company_id = :cid" if company_id else "") + " order by name"
+    rows = (await session.execute(text(sql), {"cid": company_id} if company_id else {})).mappings().all()
     return [dict(r) for r in rows]
 
 
-async def create_branch(session: AsyncSession, user: CurrentUser, name: str) -> dict:
+async def create_branch(session: AsyncSession, user: CurrentUser, name: str, company_id: Optional[str] = None) -> dict:
+    cid = company_id or user.company_id
     row = (await session.execute(text(
         "insert into branches (company_id, name) values (:cid, :name) returning id, name"
-    ), {"cid": user.company_id, "name": name})).mappings().one()
-    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+    ), {"cid": cid, "name": name})).mappings().one()
+    await write_audit(session, company_id=cid, actor_id=user.id,
                       action="create", entity_type="branches", entity_id=row["id"], after=dict(row))
     return dict(row)
 
 
-async def update_branch(session: AsyncSession, user: CurrentUser, branch_id: str, name: str) -> dict:
-    before = (await session.execute(
-        text("select id, name from branches where id = :id"), {"id": branch_id}
-    )).mappings().first()
+async def update_branch(
+    session: AsyncSession, user: CurrentUser, branch_id: str, name: str, company_id: Optional[str] = None,
+) -> dict:
+    sql = "select id, name from branches where id = :id" + (" and company_id = :cid" if company_id else "")
+    params = {"id": branch_id, **({"cid": company_id} if company_id else {})}
+    before = (await session.execute(text(sql), params)).mappings().first()
     if before is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "branch not found")
 
     row = (await session.execute(text(
         "update branches set name = :name where id = :id returning id, name"
     ), {"id": branch_id, "name": name})).mappings().one()
-    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+    await write_audit(session, company_id=company_id or user.company_id, actor_id=user.id,
                       action="update", entity_type="branches", entity_id=branch_id,
                       before=dict(before), after=dict(row))
     return dict(row)
