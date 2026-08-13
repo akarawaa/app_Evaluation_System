@@ -35,3 +35,7 @@ class GrantAccessIn(BaseModel):
 
 class ActiveCompanyIn(BaseModel):
     company_id: UUID
+
+
+class UserStatusIn(BaseModel):
+    active: bool

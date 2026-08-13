@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.audit import write_audit
-from app.services.auth_admin import create_auth_user
+from app.services.auth_admin import create_auth_user, set_user_ban
 
 PLATFORM_SLUG = "__platform__"
 INVITABLE_ROLES = {"hr_admin", "manager", "dept_manager", "md", "gm", "employee"}
@@ -40,16 +40,9 @@ async def get_tenant(session: AsyncSession, company_id: str) -> dict:
     if company is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "tenant not found")
 
-    users = (await session.execute(text(
-        "select p.id, p.display_name, p.employee_id, "
-        "coalesce(array_agg(r.code) filter (where r.code is not null), '{}') as roles "
-        "from profiles p "
-        "left join user_roles ur on ur.profile_id = p.id "
-        "left join roles r on r.id = ur.role_id "
-        "where p.company_id = :id "
-        "group by p.id, p.display_name, p.employee_id "
-        "order by p.display_name"
-    ), {"id": company_id})).mappings().all()
+    users = (await session.execute(
+        text("select * from app.list_company_users(:cid)"), {"cid": company_id},
+    )).mappings().all()
 
     out = dict(company)
     out["users"] = [dict(u) for u in users]
@@ -153,3 +146,29 @@ async def grant_company_access(
         after={"email": email, "role": role_code},
     )
     return {"user_id": str(profile_id), "email": email, "role": role_code}
+
+
+async def set_user_status(
+    session: AsyncSession, actor_id: str, company_id: str, profile_id: str, active: bool,
+) -> dict:
+    """Deactivate/reactivate a login (ban via GoTrue, see auth_admin.set_user_ban)
+    without touching the profile/user_roles rows -- past evaluations they
+    scored/approved/were subject to stay intact."""
+    if profile_id == actor_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "cannot deactivate your own account")
+
+    owner = (await session.execute(
+        text("select 1 from profiles where id = :pid and company_id = :cid"),
+        {"pid": profile_id, "cid": company_id},
+    )).first()
+    if owner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found in this tenant")
+
+    await set_user_ban(profile_id, banned=not active)
+
+    await write_audit(
+        session, company_id=company_id, actor_id=actor_id,
+        action="user_activated" if active else "user_deactivated",
+        entity_type="profiles", entity_id=profile_id,
+    )
+    return {"user_id": profile_id, "active": active}

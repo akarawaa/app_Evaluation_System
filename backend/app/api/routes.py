@@ -12,7 +12,7 @@ from app.schemas.attendance_formula import AttendanceFormulaIn, AttendanceFormul
 from app.schemas.branch import BranchCreate, BranchOut
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.schemas.employee_import import ImportResult
-from app.schemas.tenant import ActiveCompanyIn, InviteUserIn
+from app.schemas.tenant import ActiveCompanyIn, InviteUserIn, UserStatusIn
 from app.schemas.user import UserOut
 from app.services import attendance_formula as attendance_formula_svc
 from app.services import company_access as company_access_svc
@@ -261,6 +261,18 @@ async def invite_user(
         payload.email, payload.password, payload.role,
         str(payload.employee_id) if payload.employee_id else None,
     )
+
+
+@router.patch("/users/{profile_id}/status")
+async def set_user_status(
+    profile_id: str,
+    payload: UserStatusIn,
+    company_id: Optional[str] = Query(default=None),
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    target_company = _resolve_company(user, company_id) or user.company_id
+    return await tenant_admin_svc.set_user_status(session, user.id, target_company, profile_id, payload.active)
 
 
 @router.get("/settings/attendance-formula", response_model=AttendanceFormulaOut)

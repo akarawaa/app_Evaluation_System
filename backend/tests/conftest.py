@@ -120,7 +120,8 @@ async def world(db):
         await db.execute("insert into user_roles (profile_id,role_id,company_id) select $1,id,$2 from roles where code='super_admin'", su_uid, PLATFORM_ID)
         su_token = await _token(c, su_email)
 
-    yield {"A": a, "B": b, "emp_token": emp_token, "super_token": su_token}
+    yield {"A": a, "B": b, "emp_token": emp_token, "super_token": su_token,
+           "emp_uid": emp_uid, "emp_email": emp_email}
 
     for cid in company_ids:
         await db.execute("delete from companies where id=$1", cid)

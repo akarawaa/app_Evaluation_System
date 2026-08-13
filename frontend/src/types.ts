@@ -65,6 +65,7 @@ export type TenantUser = {
   display_name: string | null
   employee_id: string | null
   roles: string[]
+  active: boolean
 }
 
 export type TenantDetail = Tenant & { users: TenantUser[] }

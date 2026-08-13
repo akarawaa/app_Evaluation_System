@@ -4,7 +4,7 @@
 
 **อัปเดตล่าสุด:** 2026-08-13
 **Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, pytest 108/108 → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** + **ปิดใช้งานบัญชี login รายคน** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, pytest 112/112 → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
 
 ---
 
@@ -220,6 +220,14 @@ npx supabase stop           # ตอนเลิกงาน
   - เอาเมนู "พนักงาน & สาขา" ออกจาก nav ของ super_admin แล้ว — เข้าถึงต่อบริษัทผ่านปุ่มใหม่ "จัดการพนักงาน & สาขาของบริษัทนี้" ใน `TenantDetail.tsx` เท่านั้น (ส่ง `company_id` มาใน URL เสมอ)
   - **ขอบเขตที่ตั้งใจไม่ทำรอบนี้**: import พนักงาน/attendance CSV + ตั้งสูตรคะแนนการมา-ลา ยังไม่รองรับ `company_id` explicit — ซ่อนส่วนนี้ไว้เมื่อ super_admin เข้าผ่านบริษัทที่เลือก (ต้องให้ hr_admin ของบริษัทนั้น login ทำเอง) กันไม่ให้เขียนข้อมูลเข้าบริษัท Platform ของ super_admin โดยไม่ตั้งใจ
   - พิสูจน์: pytest ใหม่ 6 เคส (`test_super_admin_company_scoping.py`, มี negative test ครบทั้ง "hr_admin ส่ง company_id ของบริษัทอื่น" และ "hr_admin ส่ง company_id ของตัวเอง" — ทั้งคู่ต้อง 403) รวม pytest ทั้งชุด 108/108 ผ่าน, ทดสอบจริงผ่าน browser (สร้าง 2 บริษัทคนละพนักงาน → เข้าดูแยกกันถูกต้อง, เชิญ user ผ่านหน้า Company A → ยืนยันด้วย SQL ว่าลงบริษัท A ไม่ใช่ platform tenant)
+  - deploy ขึ้น production แล้ว (push master → Vercel + Render auto-deploy)
+
+- **เพิ่มฟีเจอร์ปิดใช้งานบัญชี login รายคน** (ผู้ใช้ถาม: "หาก user ลาออก...จะมีวิธีลบ หรือ inactive user อย่างไร" → ตรวจแล้วพบว่ายังไม่มีเลย มีแต่ระงับทั้งบริษัท) → ดูรายละเอียดที่ [SECURITY.md](SECURITY.md) หัวข้อ "ปิดใช้งานบัญชี login" —
+  - migration `0022_user_account_status.sql`: `app.list_company_users()` (SECURITY DEFINER, อ่าน `auth.users.banned_until` ที่ session ปกติอ่านไม่ได้ — เหตุผลเดียวกับ `find_profile_by_email`)
+  - `auth_admin.set_user_ban()` — ban/unban ผ่าน GoTrue admin API (`ban_duration`) ไม่แตะ profile/user_roles → ใบประเมินเก่าที่คนนั้นเกี่ยวข้องยังอ้างอิงถึงได้ครบ
+  - `PATCH /api/users/{id}/status` — hr_admin ปิดได้เฉพาะบริษัทตัวเอง, super_admin ระบุ `company_id` ได้ (ใช้ `_resolve_company()` เดียวกับข้อบนนี้), กันปิดบัญชีตัวเอง (400), กัน user ข้ามบริษัท (404)
+  - UI: คอลัมน์ "สถานะ" + ปุ่ม "ปิดใช้งาน/เปิดใช้งาน" ในตาราง user ทั้งหน้า "พนักงาน & สาขา" (hr_admin) และ `TenantDetail.tsx` (super_admin)
+  - พิสูจน์: pytest ใหม่ 4 เคส (`test_user_account_status.py`, ทดสอบ login จริงหลัง ban/unban ผ่าน GoTrue จริง) รวมทั้งชุด 112/112 ผ่าน + ยืนยัน manual E2E ผ่าน curl (invite → deactivate → login 400 → reactivate → login 200)
   - deploy ขึ้น production แล้ว (push master → Vercel + Render auto-deploy)
 
 - **แก้ปัญหา "ลืมรหัสผ่านไม่มีเมลมา"** → root cause คนละเรื่องกับบั๊กด้านบน: **Supabase Cloud free tier auto-pause โปรเจกต์เมื่อไม่มี API activity นานพอ** — ตอน pause อยู่ GoTrue (Auth) จะไม่ทำงาน ส่งอีเมล recovery ไม่ได้เลย (ไม่ error ให้เห็นฝั่ง UI ด้วย เพราะ UI ตั้งใจให้ขึ้นข้อความเดียวกันเสมอกันเดา enumeration) — แก้โดยเข้า Supabase dashboard กด **Resume/Restore project** แล้วอีเมล recovery ส่งได้ปกติ **ไม่ต้องแก้โค้ด** — จดไว้เป็นความรู้สำหรับ pilot ที่ยังไม่มี traffic สม่ำเสมอ: ถ้าเจออาการคล้ายกัน (ไม่ใช่แค่ reset password — login/ทุกอย่างที่พึ่ง Supabase Auth จะพังหมดถ้า pause) ให้เช็คสถานะโปรเจกต์ใน dashboard ก่อนเป็นอันดับแรก

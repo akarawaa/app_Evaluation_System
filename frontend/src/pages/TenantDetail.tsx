@@ -54,6 +54,19 @@ export default function TenantDetail() {
     }
   }
 
+  const toggleUserStatus = async (u: { id: string; active: boolean }) => {
+    setBusy(true); setError(null); setMsg(null)
+    try {
+      await apiSend('PATCH', `/api/users/${u.id}/status?company_id=${id}`, { active: !u.active })
+      await load()
+      setMsg(u.active ? 'ปิดใช้งานบัญชีแล้ว' : 'เปิดใช้งานบัญชีแล้ว')
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const sendGrant = async () => {
     if (!grant.email.trim()) return
     setBusy(true); setError(null); setMsg(null)
@@ -168,7 +181,7 @@ export default function TenantDetail() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500 border-b">
-                <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th>
+                <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th><th>สถานะ</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -176,10 +189,20 @@ export default function TenantDetail() {
                 <tr key={u.id} className="border-b last:border-0">
                   <td className="py-1.5 pr-2">{u.display_name ?? '—'}</td>
                   <td>{u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || '—'}</td>
+                  <td>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {u.active ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap">
+                    <button onClick={() => toggleUserStatus(u)} disabled={busy} className="text-slate-500 text-xs font-medium disabled:opacity-50">
+                      {u.active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {tenant.users.length === 0 && (
-                <tr><td colSpan={2} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
+                <tr><td colSpan={4} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
               )}
             </tbody>
           </table>

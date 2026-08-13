@@ -9,3 +9,4 @@ class UserOut(BaseModel):
     display_name: Optional[str] = None
     employee_id: Optional[UUID] = None
     roles: list[str]
+    active: bool

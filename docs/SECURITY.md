@@ -25,6 +25,14 @@
 - **ขอบเขตที่ตั้งใจไม่ครอบคลุม**: import พนักงาน/attendance CSV และตั้งสูตรคะแนนการมา-ลา ยังไม่รับ `company_id` explicit — ซ่อน UI ส่วนนี้ไว้เมื่อ super_admin เข้าผ่าน `?company_id=` (ต้องให้ hr_admin ของบริษัทนั้น login เองทำแทน) กันไม่ให้เขียนข้อมูลเข้าบริษัท Platform ของ super_admin โดยไม่ตั้งใจ
 - พิสูจน์: pytest 102/102 ผ่าน (ไม่มี regression), ทดสอบจริงผ่าน browser (สร้าง 2 บริษัท คนละพนักงาน → เข้าดูแยกกันถูกต้อง, เชิญ user ผ่านหน้า Company A → ยืนยันด้วย SQL ว่า `profiles.company_id` ตรงกับ Company A ไม่ใช่ platform tenant), ทดสอบ negative ผ่าน curl (hr_admin ส่ง `?company_id=` ของบริษัทอื่น → 403 ตามคาด)
 
+### ปิดใช้งานบัญชี login (`0022_user_account_status.sql`, `PATCH /api/users/{id}/status`)
+คนลาออกแล้วต้อง revoke การเข้าระบบได้ทันที — เดิมไม่มีทางทำเลย มีแต่ "ระงับทั้งบริษัท" ซึ่งกระทบทุกคน
+- **Ban ที่ระดับ Supabase Auth** (`auth_admin.set_user_ban`, `ban_duration` ผ่าน GoTrue admin API) ไม่ใช่แค่ถอด `user_roles` — เพราะแค่ถอด role ยังไม่บล็อกไม่ให้เห็นข้อมูลพื้นฐานของบริษัท (RLS กันแค่ข้ามบริษัท ไม่ได้เช็ค role ทุก endpoint) ต้อง block ที่ชั้น authentication เองถึงจะเชื่อถือได้จริง — **ไม่ลบ profile/user_roles** เพื่อให้ใบประเมินเก่าที่คนนั้นเคยให้คะแนน/อนุมัติ/ถูกประเมิน ยังอ้างอิงถึงได้ครบ (audit trail ไม่ขาด)
+- **กันตัวเองปิดบัญชีตัวเอง:** `set_user_status` เช็ค `profile_id == actor_id` → 400 ทันที (กันล็อกตัวเองออกจากระบบโดยไม่ตั้งใจ)
+- **ตรวจว่า user เป็นของบริษัทที่กำลังจัดการอยู่จริง** ก่อน ban ทุกครั้ง (`where id = :pid and company_id = :cid`) — ใช้ company scoping pattern เดียวกับ `_resolve_company()` ด้านบน (hr_admin ปิดได้เฉพาะบริษัทตัวเอง, super_admin ระบุ `company_id` ได้)
+- **`auth.users.banned_until` อ่านผ่าน SECURITY DEFINER เท่านั้น** (`app.list_company_users`) เพราะ session ปกติอ่าน `auth.users` ตรงไม่ได้ (เหตุผลเดียวกับ `find_profile_by_email` ใน `0021`) — self-guard: `is_super_admin() or p_company_id = current_company_id()`
+- พิสูจน์: pytest ใหม่ 4 เคส (`test_user_account_status.py`) ทดสอบ login จริงหลัง ban/unban ผ่าน GoTrue จริง (ไม่ mock) + ยืนยันซ้ำด้วย manual E2E ผ่าน curl (invite → deactivate → login ได้ 400 → reactivate → login ได้ 200) รวม pytest ทั้งชุด 112/112
+
 ## A02 — Cryptographic Failures
 - **In transit:** HTTPS/TLS ทุก endpoint (บังคับ), HSTS
 - **At rest:** Supabase Postgres เข้ารหัส disk; ข้อมูลอ่อนไหว (PDPA) ไม่เก็บเกินจำเป็น
