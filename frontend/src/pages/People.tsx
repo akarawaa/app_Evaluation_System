@@ -170,7 +170,7 @@ export default function People() {
     <div className="min-h-screen bg-slate-50">
       <AppHeader title={companyName ? `จัดการพนักงาน & สาขา — ${companyName}` : 'จัดการพนักงาน & สาขา'} />
 
-      <main className="p-6 space-y-6 max-w-4xl mx-auto">
+      <main className="p-6 space-y-6 max-w-6xl mx-auto">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
         {companyId && (
@@ -439,20 +439,20 @@ export default function People() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500 border-b">
-                  <th className="py-1 pr-2">รหัส</th><th className="pr-2">ชื่อ</th><th className="pr-2">ประเภทแบบประเมิน</th>
-                  <th className="pr-2">สาขา</th><th className="pr-2">หัวหน้า</th><th className="pr-2">ผจก.แผนก</th>
-                  <th className="pr-2">สถานะ</th><th></th>
+                  <th className="py-1 pr-2 whitespace-nowrap">รหัส</th><th className="pr-2 whitespace-nowrap">ชื่อ</th><th className="pr-2 whitespace-nowrap">ประเภทแบบประเมิน</th>
+                  <th className="pr-2 whitespace-nowrap">สาขา</th><th className="pr-2 whitespace-nowrap">หัวหน้า</th><th className="pr-2 whitespace-nowrap">ผจก.แผนก</th>
+                  <th className="pr-2 whitespace-nowrap">สถานะ</th><th></th>
                 </tr>
               </thead>
               <tbody>
                 {employees.map((emp) => (
                   <tr key={emp.id} className="border-b last:border-0">
-                    <td className="py-1.5 pr-2">{emp.emp_code}</td>
-                    <td className="pr-2">{emp.full_name}</td>
-                    <td className="pr-2">{LEVEL_LABEL[emp.level] ?? emp.level}</td>
-                    <td className="pr-2 text-slate-500">{emp.branch_name ?? '—'}</td>
-                    <td className="pr-2 text-slate-500">{emp.supervisor_name ?? '—'}</td>
-                    <td className="pr-2 text-slate-500">{emp.manager_name ?? '—'}</td>
+                    <td className="py-1.5 pr-2 whitespace-nowrap">{emp.emp_code}</td>
+                    <td className="pr-2 whitespace-nowrap">{emp.full_name}</td>
+                    <td className="pr-2 whitespace-nowrap">{LEVEL_LABEL[emp.level] ?? emp.level}</td>
+                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.branch_name ?? '—'}</td>
+                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.supervisor_name ?? '—'}</td>
+                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.manager_name ?? '—'}</td>
                     <td className="pr-2">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${emp.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                         {emp.status === 'active' ? 'ทำงานอยู่' : 'ปิดใช้งาน'}
