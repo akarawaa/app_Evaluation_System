@@ -390,11 +390,11 @@ export default function People() {
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">ระดับ</span>
+              <span className="block text-slate-500 mb-0.5">ประเภทแบบประเมิน</span>
               <select className="border rounded px-2 py-1 w-full" value={form.level}
                 onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
-                <option value="operational">พนักงานปฏิบัติการ</option>
-                <option value="supervisor">หัวหน้างาน</option>
+                <option value="operational">{LEVEL_LABEL.operational}</option>
+                <option value="supervisor">{LEVEL_LABEL.supervisor}</option>
               </select>
             </label>
             <label>
@@ -439,7 +439,7 @@ export default function People() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500 border-b">
-                  <th className="py-1 pr-2">รหัส</th><th className="pr-2">ชื่อ</th><th className="pr-2">ระดับ</th>
+                  <th className="py-1 pr-2">รหัส</th><th className="pr-2">ชื่อ</th><th className="pr-2">ประเภทแบบประเมิน</th>
                   <th className="pr-2">สาขา</th><th className="pr-2">หัวหน้า</th><th className="pr-2">ผจก.แผนก</th>
                   <th className="pr-2">สถานะ</th><th></th>
                 </tr>

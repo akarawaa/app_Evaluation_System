@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
+import { LEVEL_LABEL } from '../types'
 
 type Employee = {
   id: string
@@ -58,7 +59,7 @@ export default function Dashboard() {
               <tr className="text-left text-slate-500 border-b">
                 <th className="py-1">รหัส</th>
                 <th>ชื่อ</th>
-                <th>ระดับ</th>
+                <th>ประเภทแบบประเมิน</th>
                 <th>สถานะ</th>
               </tr>
             </thead>
@@ -67,7 +68,7 @@ export default function Dashboard() {
                 <tr key={e.id} className="border-b last:border-0">
                   <td className="py-1">{e.emp_code}</td>
                   <td>{e.full_name}</td>
-                  <td>{e.level}</td>
+                  <td>{LEVEL_LABEL[e.level] ?? e.level}</td>
                   <td>{e.status}</td>
                 </tr>
               ))}

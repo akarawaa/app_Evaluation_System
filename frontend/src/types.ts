@@ -84,8 +84,8 @@ export const ROLE_LABEL: Record<string, string> = {
 export const INVITE_ROLES = ['hr_admin', 'manager', 'dept_manager', 'md', 'gm', 'employee']
 
 export const LEVEL_LABEL: Record<string, string> = {
-  operational: 'พนักงานปฏิบัติการ',
-  supervisor: 'หัวหน้างาน',
+  operational: 'พนักงานทั่วไป (แบบประเมิน 28 ข้อ)',
+  supervisor: 'ผู้บังคับบัญชา (แบบประเมิน 42 ข้อ)',
 }
 
 export type Template = {
