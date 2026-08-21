@@ -40,17 +40,17 @@ export default function AppHeader({ title }: { title?: string }) {
   const { pathname } = useLocation()
 
   return (
-    <header className="bg-white border-b px-6 py-3">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="font-semibold text-slate-800 hover:text-slate-900">E-Appraisal</Link>
-          {title && <span className="text-slate-300">/</span>}
-          {title && <span className="text-sm text-slate-600">{title}</span>}
+    <header className="bg-white border-b px-4 sm:px-6 py-3">
+      <div className="flex flex-wrap justify-between items-center gap-x-3 gap-y-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link to="/" className="font-semibold text-slate-800 hover:text-slate-900 shrink-0">E-Appraisal</Link>
+          {title && <span className="text-slate-300 shrink-0">/</span>}
+          {title && <span className="text-sm text-slate-600 break-words">{title}</span>}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           <CompanySwitcher />
           <CurrentUserBadge />
-          <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900">
+          <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900 shrink-0">
             ออกจากระบบ
           </button>
         </div>
