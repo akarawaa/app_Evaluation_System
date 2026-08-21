@@ -209,7 +209,7 @@ async def list_inbox(session: AsyncSession, user: CurrentUser) -> list[dict]:
 
 async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
     emp = (await session.execute(text(
-        "select id, supervisor_id, manager_id from employees where id = :id"
+        "select id, company_id, supervisor_id, manager_id from employees where id = :id"
     ), {"id": str(payload.employee_id)})).mappings().first()
     if emp is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "employee not found")
@@ -221,6 +221,23 @@ async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
     if not allowed:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "not allowed to create this evaluation")
 
+    # The evaluation belongs to whichever company owns the EMPLOYEE, not the
+    # actor -- for every normal (non-super_admin) caller these are always the
+    # same company anyway (RLS already prevents them from ever selecting an
+    # employee outside their own tenant), so this is a no-op in practice.
+    # It matters only for super_admin, whose own company_id is the reserved
+    # platform tenant: using user.company_id there would have silently filed
+    # the evaluation under the platform tenant instead of the real company,
+    # making it invisible to that company's own hr_admin/staff afterward.
+    target_company = emp["company_id"]
+
+    tmpl = (await session.execute(
+        text("select company_id from criteria_templates where id = :id"),
+        {"id": str(payload.template_id)},
+    )).mappings().first()
+    if tmpl is None or tmpl["company_id"] != target_company:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "template does not belong to this employee's company")
+
     ev = (await session.execute(text(
         "insert into evaluations "
         "(company_id, cycle_id, employee_id, evaluator_id, template_id, kind, "
@@ -228,7 +245,7 @@ async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
         "values (:cid, :cycle, :emp, :evltr, :tmpl, :kind, :chk, :ps, :pe) "
         "returning id"
     ), {
-        "cid": user.company_id, "cycle": str(payload.cycle_id) if payload.cycle_id else None,
+        "cid": target_company, "cycle": str(payload.cycle_id) if payload.cycle_id else None,
         "emp": str(payload.employee_id), "evltr": emp["supervisor_id"],
         "tmpl": str(payload.template_id), "kind": payload.kind,
         "chk": payload.probation_checkpoint,
@@ -242,7 +259,7 @@ async def create(session: AsyncSession, user: CurrentUser, payload) -> dict:
     if not n:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "template has no criteria to snapshot")
 
-    await write_audit(session, company_id=user.company_id, actor_id=user.id,
+    await write_audit(session, company_id=target_company, actor_id=user.id,
                       action="evaluation_created", entity_type="evaluations",
                       entity_id=eval_id, after={"employee_id": str(payload.employee_id),
                                                 "kind": payload.kind, "items": n})

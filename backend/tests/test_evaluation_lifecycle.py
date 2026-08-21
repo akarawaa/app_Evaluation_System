@@ -50,9 +50,39 @@ async def org(db):
             "emp": await make("emp", "employee", e_emp),
         }
 
-    tmpl = (await db.fetchrow(
-        "select id from criteria_templates where company_id is null and applies_to_level='operational' limit 1"
-    ))["id"]
+    # Clone the master template into this tenant, same as real tenant
+    # provisioning (app.clone_master_templates) -- creating an evaluation
+    # against the shared master row directly is rejected now (see
+    # services/evaluations.create): evaluations must reference a template
+    # that belongs to the SAME company as the employee being evaluated, or
+    # a confused/super_admin caller could mix one tenant's employee with
+    # another tenant's custom criteria.
+    master = await db.fetchrow(
+        "select id, name, version, applies_to_level from criteria_templates "
+        "where company_id is null and applies_to_level='operational' limit 1"
+    )
+    tmpl = await db.fetchval(
+        "insert into criteria_templates (company_id, name, version, applies_to_level, status) "
+        "values ($1, $2, $3, $4, 'active') returning id",
+        cid, master["name"], master["version"], master["applies_to_level"],
+    )
+    categories = await db.fetch(
+        "select id, sort_order, name from criteria_categories where template_id = $1 order by sort_order",
+        master["id"],
+    )
+    for cat in categories:
+        new_cat = await db.fetchval(
+            "insert into criteria_categories (template_id, company_id, sort_order, name) "
+            "values ($1, $2, $3, $4) returning id",
+            tmpl, cid, cat["sort_order"], cat["name"],
+        )
+        await db.execute(
+            "insert into criteria_items "
+            "(category_id, company_id, sort_order, name, weight, desc_1, desc_2, desc_3, desc_4, desc_5) "
+            "select $1, $2, sort_order, name, weight, desc_1, desc_2, desc_3, desc_4, desc_5 "
+            "from criteria_items where category_id = $3",
+            new_cat, cid, cat["id"],
+        )
 
     yield {"cid": cid, "e_emp": e_emp, "template_id": str(tmpl), **tokens}
 
@@ -73,6 +103,39 @@ async def _acknowledge(api, org, eid):
     r = await api.post(f"/api/evaluations/{eid}/acknowledge-paper", headers=auth(org["hr"]),
                        data={"decision": "acknowledged"})
     assert r.status_code == 200, r.text
+
+
+async def test_create_rejects_template_from_another_company(api, org, db):
+    """A template must belong to the SAME company as the employee being
+    evaluated -- otherwise a confused/super_admin caller could mix one
+    tenant's employee with another tenant's (possibly customized) criteria,
+    and the resulting evaluation would snapshot the wrong company's items."""
+    other_cid = str(uuid.uuid4())
+    await db.execute("insert into companies (id,name,slug) values ($1,'Other',$2)",
+                     other_cid, f"other-{uuid.uuid4().hex[:8]}")
+    other_tmpl = await db.fetchval(
+        "insert into criteria_templates (company_id, name, version, applies_to_level, status) "
+        "values ($1, 'Other Template', 1, 'operational', 'active') returning id",
+        other_cid,
+    )
+    try:
+        payload = {"employee_id": org["e_emp"], "template_id": str(other_tmpl), "kind": "annual"}
+        r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=payload)
+        assert r.status_code == 400
+    finally:
+        await db.execute("delete from companies where id=$1", other_cid)
+
+
+async def test_create_rejects_master_template_directly(api, org, db):
+    """The shared master row (company_id is null) is a cloning source only
+    (see app.clone_master_templates) -- every tenant gets its own copy at
+    provisioning, and must use that, never the master row itself."""
+    master_id = await db.fetchval(
+        "select id from criteria_templates where company_id is null and applies_to_level='operational' limit 1"
+    )
+    payload = {"employee_id": org["e_emp"], "template_id": str(master_id), "kind": "annual"}
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=payload)
+    assert r.status_code == 400
 
 
 async def test_full_lifecycle(api, org):

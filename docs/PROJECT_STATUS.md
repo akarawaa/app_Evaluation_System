@@ -2,9 +2,9 @@
 
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
-**อัปเดตล่าสุด:** 2026-08-13
+**อัปเดตล่าสุด:** 2026-08-21
 **Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
-**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** + **ปิดใช้งานบัญชี login รายคน** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, pytest 112/112 → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
+**สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** + **ปิดใช้งานบัญชี login รายคน** + **สร้างใบประเมิน: แก้บั๊ก template ข้ามบริษัท + company_id ผิด** + **แก้ label "ระดับ" กำกวม** + **แก้ AppHeader ล้นจอมือถือ** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, pytest 114/114 → รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
 
 ---
 
@@ -231,6 +231,24 @@ npx supabase stop           # ตอนเลิกงาน
   - deploy ขึ้น production แล้ว (push master → Vercel + Render auto-deploy)
 
 - **แก้ปัญหา "ลืมรหัสผ่านไม่มีเมลมา"** → root cause คนละเรื่องกับบั๊กด้านบน: **Supabase Cloud free tier auto-pause โปรเจกต์เมื่อไม่มี API activity นานพอ** — ตอน pause อยู่ GoTrue (Auth) จะไม่ทำงาน ส่งอีเมล recovery ไม่ได้เลย (ไม่ error ให้เห็นฝั่ง UI ด้วย เพราะ UI ตั้งใจให้ขึ้นข้อความเดียวกันเสมอกันเดา enumeration) — แก้โดยเข้า Supabase dashboard กด **Resume/Restore project** แล้วอีเมล recovery ส่งได้ปกติ **ไม่ต้องแก้โค้ด** — จดไว้เป็นความรู้สำหรับ pilot ที่ยังไม่มี traffic สม่ำเสมอ: ถ้าเจออาการคล้ายกัน (ไม่ใช่แค่ reset password — login/ทุกอย่างที่พึ่ง Supabase Auth จะพังหมดถ้า pause) ให้เช็คสถานะโปรเจกต์ใน dashboard ก่อนเป็นอันดับแรก
+
+- **แก้ backend cold start จริงจัง ด้วย keep-alive ping ภายนอก** (ผู้ใช้ถามทำไมโหลดช้า) → root cause: Render free tier sleep หลัง idle 15 นาที ที่แก้ไปก่อนหน้า (retry ฝั่ง frontend) แค่ทำให้ error message ถูกต้องขึ้น **ไม่ได้แก้ที่ต้นเหตุความช้า** — แนะนำ + ผู้ใช้ตั้งเอง: UptimeRobot ping `https://e-appraisal-api.onrender.com/health` ทุก 10 นาที (ก่อน 15 นาทีที่ Render จะ sleep) — พิสูจน์: รอ 18 นาทีไม่มี request อื่นแทรก แล้วยิง `/health` ได้ 0.17s (ไม่ cold start) เทียบกับ 20-50s ตอนยังไม่ตั้ง — ไม่ใช่การแก้โค้ด เป็น infra workaround ของ free tier
+
+- **แก้ label "ระดับ" กำกวม → "ประเภทแบบประเมิน"** (ผู้ใช้สับสนตอนเพิ่ม ผจก.แผนก ไม่รู้ว่า "ระดับ" คือเลือกฟอร์ม 28/42 ข้อ ไม่ใช่ตำแหน่ง) →
+  - `frontend/src/types.ts` (`LEVEL_LABEL`), `People.tsx` (label ฟอร์ม + หัวตาราง), `Dashboard.tsx` (หัวตาราง + แก้บั๊กเดิมที่โชว์ค่าดิบ `operational`/`supervisor` แทนคำแปลไทย) — เปลี่ยนแค่ข้อความแสดงผล ไม่แตะค่าที่เก็บใน DB (`operational`/`supervisor` เหมือนเดิม)
+  - พิสูจน์: tsc ผ่าน + เช็คจริงผ่าน browser ทั้งหน้า People และ Dashboard
+  - deploy ขึ้น production แล้ว
+
+- **แก้ AppHeader ล้นจอมือถือ (เสร็จ+พิสูจน์+deploy)** (ผู้ใช้ขอให้เช็ค responsive ตอนแก้ตารางพนักงาน) → ตรวจแล้วพบว่าปัญหาจริงไม่ใช่แค่ตาราง แต่เป็น**แถวบนของ `AppHeader` เอง** (โลโก้ + ตัวสลับบริษัท + `CurrentUserBadge` + ปุ่มออกจากระบบ) ไม่มี `flex-wrap` และ `CurrentUserBadge` บังคับ `whitespace-nowrap` บนข้อความที่ยาวได้ (อีเมล · บทบาท · บริษัท · สาขา) → ดันทั้งหน้าล้นจอแนวนอนทุกหน้า (header ใช้ร่วมกันทุกหน้า ไม่ใช่แค่ People) —
+  - แก้ `AppHeader.tsx` ให้แถวบนตัดขึ้นบรรทัดใหม่ได้ (`flex-wrap`) แทนล้นจอ, เอา `whitespace-nowrap` ออกจาก `CurrentUserBadge.tsx`
+  - พิสูจน์: เช็คจริงผ่าน browser ที่ 375px (มือถือ) และ 768px (แท็บเล็ต) ด้วย `document.body.scrollWidth` เทียบ `window.innerWidth` — ไม่มีการล้นจอเหลืออีก ทั้งหน้า People และ Dashboard, ตารางพนักงานยัง scroll ในกรอบตัวเองได้ตามปกติ (ตั้งใจให้เป็นแบบนั้น)
+
+- **สร้างใบประเมิน: แก้บั๊ก dropdown ซ้ำ + company_id ผิด (เสร็จ+พิสูจน์)** (ผู้ใช้ถาม "ทำไมมีเมนูให้เลือกซ้ำๆ กัน" ที่ dropdown "แบบฟอร์ม" หน้าใบประเมินผล) → ดูรายละเอียดที่ [SECURITY.md](SECURITY.md) หัวข้อ "สร้างใบประเมิน: template ต้องเป็นของบริษัทเดียวกับพนักงาน" — ไล่โค้ดจริงเจอบั๊ก 2 ชั้น ไม่ใช่แค่ UI ซ้ำ:
+  - `GET /api/templates` ไม่กรอง company (RLS bypass สำหรับ super_admin เหมือนบั๊กพนักงาน/user ก่อนหน้า) + โชว์ master template (ต้นแบบสำหรับ clone เท่านั้น) ปนกับสำเนาแต่ละบริษัท → แก้โดยตัด master ออกจากลิสต์เสมอ (ทุก role)
+  - **บั๊กที่ร้ายแรงกว่าที่เจอตามมา**: `evaluations.company_id` เดิมตั้งจาก `user.company_id` (ผู้กระทำ) แทนที่จะเป็นบริษัทของพนักงานที่ถูกประเมิน — ถ้า super_admin สร้างใบประเมินให้พนักงานบริษัทจริง ใบจะลงใต้ platform tenant แทน กลายเป็นใบที่บริษัทเจ้าของพนักงานตัวจริงมองไม่เห็นเลย — เช็คแล้วบน production **ยังไม่มีข้อมูลเสียหายจริง** (0 แถว) แต่พร้อมเกิดถ้าใช้ต่อ
+  - แก้: `target_company = emp["company_id"]` (ไม่ใช่ผู้กระทำ) ใช้ทั้ง insert evaluation + audit log, เพิ่มตรวจ `template.company_id == target_company` เป๊ะ ไม่งั้น 400
+  - พิสูจน์: negative test ใหม่ 2 เคส (`test_create_rejects_template_from_another_company`, `test_create_rejects_master_template_directly`) + แก้ fixture เดิม (`test_evaluation_lifecycle.py`'s `org`) ให้ clone template เป็นของ tenant ตัวเองแทนใช้ master ตรงๆ (ตรงกับพฤติกรรมจริงหลังแก้) — pytest ทั้งชุด **114/114** ผ่าน
+  - **ยังไม่ deploy** — รอ push
 
 - **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา เสร็จ+พิสูจน์+deploy** → เดิมแต่ละหน้ามี `<header>` ของตัวเอง ลิงก์ย้อนกลับไม่เหมือนกัน ("← แดชบอร์ด"/"← ใบประเมินผล"/"← กลับ") และไม่เห็นเมนูหลักทั้งหมดพร้อมกัน (ผู้ใช้แจ้งว่าสับสน) →
   - `frontend/src/components/AppHeader.tsx` ใหม่ — nav เดียวใช้ร่วมทุกหน้า แสดงเมนูตามสิทธิ์ผู้ใช้ (`NAV_ITEMS` + `show()`), ไฮไลต์หน้าปัจจุบันด้วยเส้นใต้ (`isActive()`), ปุ่ม "ออกจากระบบ" อยู่จุดเดียวกดได้ทุกหน้า — แทนที่ `<header>` เดิมใน `Dashboard/Evaluations/Inbox/People/Tenants/TenantDetail/Compare/EvaluationDetail.tsx` ทั้งหมด

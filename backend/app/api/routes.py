@@ -193,11 +193,19 @@ async def update_employee(
 
 @router.get("/templates")
 async def list_templates(session: AsyncSession = Depends(get_tenant_session)) -> list[dict]:
-    # RLS returns master (company_id is null) + this tenant's templates
+    # Master rows (company_id is null) are a cloning source only (see
+    # app.clone_master_templates, run once at tenant provisioning) -- every
+    # tenant gets its own copy at that point, so master should never appear
+    # as a selectable option itself. Excluding it also fixes a real bug: for
+    # super_admin, RLS has no company filter at all (is_super_admin()
+    # bypasses it), so without this exclusion the list merged master +
+    # EVERY tenant's own copy into one dropdown with identical-looking
+    # duplicate names and no way to tell them apart.
     rows = (
         await session.execute(
             text(
                 "select id, name, applies_to_level, status from criteria_templates "
+                "where company_id is not null "
                 "order by name, version"
             )
         )
