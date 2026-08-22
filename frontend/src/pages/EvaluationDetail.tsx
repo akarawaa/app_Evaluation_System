@@ -124,6 +124,8 @@ export default function EvaluationDetail() {
         <section className="bg-white rounded-xl shadow p-5 flex flex-wrap gap-x-8 gap-y-2 text-sm items-center">
           <div><span className="text-slate-500">สถานะ:</span> <b>{STATUS_LABEL[ev.status] ?? ev.status}</b></div>
           <div><span className="text-slate-500">ชนิด:</span> {ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
+          <div><span className="text-slate-500">ผู้ให้คะแนน:</span> {ev.evaluator_name ?? '—'}</div>
+          <div><span className="text-slate-500">ผู้อนุมัติชั้น 1:</span> {ev.dept_manager_name ?? '—'}</div>
           <div><span className="text-slate-500">คะแนน:</span> {ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</div>
           <div><span className="text-slate-500">รวม+มาลา:</span> {ev.total_score ?? '—'}</div>
           <div><span className="text-slate-500">คิดเป็น:</span> {ev.percentage != null ? `${ev.percentage}%` : '—'}</div>

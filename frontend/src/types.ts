@@ -157,8 +157,10 @@ export type EvalDetail = {
   id: string
   employee_id: string
   evaluator_id: string | null
+  evaluator_name: string | null
   emp_supervisor_id: string | null
   emp_manager_id: string | null
+  dept_manager_name: string | null
   kind: string
   status: string
   eval_score: number | null
