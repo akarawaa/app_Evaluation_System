@@ -10,7 +10,13 @@ const emptyForm = {
   branch_id: '', supervisor_id: '', manager_id: '',
 }
 
-const emptyInvite = { email: '', password: '', role: 'manager' }
+const emptyInvite = { email: '', password: '', role: 'manager', employee_id: '' }
+
+// These two roles are authorized by the real org chain (employee.supervisor_id
+// / manager_id), not by role alone -- see services/evaluations.py. A login
+// invited with one of these roles but no employee linked can sign in but can
+// never actually score or approve anything.
+const ROLES_NEEDING_EMPLOYEE = ['manager', 'dept_manager']
 
 export default function People() {
   // Present only when a super_admin arrived here from a company's own page
@@ -157,7 +163,10 @@ export default function People() {
   const sendInvite = () => {
     if (!invite.email.trim() || invite.password.length < 8) return
     run(async () => {
-      await apiSend('POST', `/api/users/invite${qs}`, { email: invite.email.trim(), password: invite.password, role: invite.role })
+      await apiSend('POST', `/api/users/invite${qs}`, {
+        email: invite.email.trim(), password: invite.password, role: invite.role,
+        employee_id: invite.employee_id || undefined,
+      })
       setInvite(emptyInvite)
     }, 'เชิญผู้ใช้เข้าระบบแล้ว')
   }
@@ -165,6 +174,10 @@ export default function People() {
   const toggleUserStatus = (u: TenantUser) =>
     run(() => apiSend('PATCH', `/api/users/${u.id}/status${qs}`, { active: !u.active }),
       u.active ? 'ปิดใช้งานบัญชีแล้ว' : 'เปิดใช้งานบัญชีแล้ว')
+
+  const linkUserEmployee = (u: TenantUser, employeeId: string) =>
+    run(() => apiSend('PATCH', `/api/users/${u.id}/employee${qs}`, { employee_id: employeeId || null }),
+      employeeId ? 'ผูกกับพนักงานแล้ว' : 'ปลดการผูกแล้ว')
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -494,10 +507,23 @@ export default function People() {
             <label>
               <span className="block text-slate-500 mb-0.5">บทบาท</span>
               <select className="border rounded px-2 py-1 w-full" value={invite.role}
-                onChange={(e) => setInvite((f) => ({ ...f, role: e.target.value }))}>
+                onChange={(e) => setInvite((f) => ({
+                  ...f, role: e.target.value,
+                  employee_id: ROLES_NEEDING_EMPLOYEE.includes(e.target.value) ? f.employee_id : '',
+                }))}>
                 {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
             </label>
+            {ROLES_NEEDING_EMPLOYEE.includes(invite.role) && (
+              <label>
+                <span className="block text-slate-500 mb-0.5">ผูกกับพนักงาน (จำเป็น — ไม่งั้นให้คะแนน/อนุมัติไม่ได้)</span>
+                <select className="border rounded px-2 py-1 w-full" value={invite.employee_id}
+                  onChange={(e) => setInvite((f) => ({ ...f, employee_id: e.target.value }))}>
+                  <option value="">— เลือกพนักงาน —</option>
+                  {employees.map((e) => <option key={e.id} value={e.id}>{e.emp_code} · {e.full_name}</option>)}
+                </select>
+              </label>
+            )}
           </div>
           <button onClick={sendInvite} disabled={busy || !invite.email.trim() || invite.password.length < 8}
             className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
@@ -507,7 +533,7 @@ export default function People() {
           <table className="w-full text-sm mt-4">
             <thead>
               <tr className="text-left text-slate-500 border-b">
-                <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th><th>สถานะ</th><th></th>
+                <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th><th>พนักงานที่ผูก</th><th>สถานะ</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -515,6 +541,16 @@ export default function People() {
                 <tr key={u.id} className="border-b last:border-0">
                   <td className="py-1.5 pr-2">{u.display_name ?? '—'}</td>
                   <td>{u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || '—'}</td>
+                  <td>
+                    <select className="border rounded px-1.5 py-0.5 text-xs" value={u.employee_id ?? ''} disabled={busy}
+                      onChange={(e) => linkUserEmployee(u, e.target.value)}>
+                      <option value="">— ไม่ผูก —</option>
+                      {employees.map((e) => <option key={e.id} value={e.id}>{e.emp_code} · {e.full_name}</option>)}
+                    </select>
+                    {!u.employee_id && u.roles.some((r) => ROLES_NEEDING_EMPLOYEE.includes(r)) && (
+                      <div className="text-[11px] text-amber-600 mt-0.5">ยังผูกไม่ได้ — ให้คะแนน/อนุมัติไม่ได้</div>
+                    )}
+                  </td>
                   <td>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
                       {u.active ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
@@ -528,7 +564,7 @@ export default function People() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={4} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
+                <tr><td colSpan={5} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
               )}
             </tbody>
           </table>

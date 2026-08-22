@@ -172,3 +172,51 @@ async def set_user_status(
         entity_type="profiles", entity_id=profile_id,
     )
     return {"user_id": profile_id, "active": active}
+
+
+async def link_user_employee(
+    session: AsyncSession, actor_id: str, company_id: str, profile_id: str,
+    employee_id: Optional[str],
+) -> dict:
+    """Bind (or unbind, employee_id=None) a login to an employee record.
+
+    This is what makes a "หัวหน้างาน"/"ผจก.แผนก" role actually functional:
+    evaluator/dept-manager authorization is checked against the org chain
+    (employees.supervisor_id/manager_id), not the role alone (see
+    services/evaluations.py). A profile invited with that role but no
+    employee_id linked can log in and see menus, but can never actually
+    score or approve anything -- there is nothing on the org chain that
+    could ever equal an unset employee_id (see _same_employee's None-guard).
+    """
+    owner = (await session.execute(
+        text("select 1 from profiles where id = :pid and company_id = :cid"),
+        {"pid": profile_id, "cid": company_id},
+    )).first()
+    if owner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found in this tenant")
+
+    if employee_id is not None:
+        emp = (await session.execute(text(
+            "select 1 from employees where id = :eid and company_id = :cid"
+        ), {"eid": employee_id, "cid": company_id})).first()
+        if emp is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "employee not found in this tenant")
+
+        # One login per employee: two accounts both claiming to BE the same
+        # employee would make "who is this evaluation's evaluator" ambiguous.
+        other = (await session.execute(text(
+            "select 1 from profiles where employee_id = :eid and company_id = :cid and id != :pid"
+        ), {"eid": employee_id, "cid": company_id, "pid": profile_id})).first()
+        if other is not None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "this employee is already linked to another account")
+
+    await session.execute(text(
+        "update profiles set employee_id = :eid where id = :pid"
+    ), {"eid": employee_id, "pid": profile_id})
+
+    await write_audit(
+        session, company_id=company_id, actor_id=actor_id,
+        action="user_employee_linked", entity_type="profiles", entity_id=profile_id,
+        after={"employee_id": employee_id},
+    )
+    return {"user_id": profile_id, "employee_id": employee_id}

@@ -39,3 +39,7 @@ class ActiveCompanyIn(BaseModel):
 
 class UserStatusIn(BaseModel):
     active: bool
+
+
+class UserEmployeeLinkIn(BaseModel):
+    employee_id: Optional[UUID] = None

@@ -84,3 +84,79 @@ async def test_invite_cross_tenant_employee_link_rejected(api, world):
         "role": "manager", "employee_id": bob["id"],
     })
     assert r.status_code == 400
+
+
+async def _invite_no_employee(api, world, token) -> str:
+    email = f"link-target-{uuid.uuid4().hex[:8]}@test.local"
+    r = await api.post("/api/users/invite", headers=auth(token), json={
+        "email": email, "password": "Passw0rd!123", "role": "manager",
+    })
+    assert r.status_code == 201, r.text
+    return r.json()["user_id"]
+
+
+async def test_link_user_employee(api, world, db):
+    """The bug this closes: a role alone (e.g. "manager") never made a login
+    functional as an evaluator -- profiles.employee_id had to be set too, and
+    there was no way to do that after inviting except raw SQL. Linking it
+    after the fact must make /api/me report the employee_id immediately."""
+    uid = await _invite_no_employee(api, world, world["A"]["token"])
+    try:
+        alice = next(e for e in (await api.get("/api/employees", headers=auth(world["A"]["token"]))).json()
+                     if e["full_name"] == "Alice A")
+
+        r = await api.patch(f"/api/users/{uid}/employee", headers=auth(world["A"]["token"]),
+                            json={"employee_id": alice["id"]})
+        assert r.status_code == 200, r.text
+        assert r.json()["employee_id"] == alice["id"]
+
+        users = (await api.get("/api/users", headers=auth(world["A"]["token"]))).json()
+        linked = next(u for u in users if u["id"] == uid)
+        assert linked["employee_id"] == alice["id"]
+
+        # Unlink (null) must clear it back out.
+        r = await api.patch(f"/api/users/{uid}/employee", headers=auth(world["A"]["token"]),
+                            json={"employee_id": None})
+        assert r.status_code == 200
+        users = (await api.get("/api/users", headers=auth(world["A"]["token"]))).json()
+        assert next(u for u in users if u["id"] == uid)["employee_id"] is None
+    finally:
+        await db.execute("delete from auth.users where id=$1", uuid.UUID(uid))
+
+
+async def test_link_user_employee_cross_tenant_rejected(api, world, db):
+    uid = await _invite_no_employee(api, world, world["A"]["token"])
+    try:
+        bob = next(e for e in (await api.get("/api/employees", headers=auth(world["B"]["token"]))).json()
+                  if e["full_name"] == "Bob B")
+        r = await api.patch(f"/api/users/{uid}/employee", headers=auth(world["A"]["token"]),
+                            json={"employee_id": bob["id"]})
+        assert r.status_code == 400
+    finally:
+        await db.execute("delete from auth.users where id=$1", uuid.UUID(uid))
+
+
+async def test_link_user_employee_rejects_double_binding(api, world, db):
+    """Two accounts must never both claim to BE the same employee -- that
+    would make "who is this evaluation's evaluator" ambiguous."""
+    uid1 = await _invite_no_employee(api, world, world["A"]["token"])
+    uid2 = await _invite_no_employee(api, world, world["A"]["token"])
+    try:
+        alice = next(e for e in (await api.get("/api/employees", headers=auth(world["A"]["token"]))).json()
+                     if e["full_name"] == "Alice A")
+        r = await api.patch(f"/api/users/{uid1}/employee", headers=auth(world["A"]["token"]),
+                            json={"employee_id": alice["id"]})
+        assert r.status_code == 200
+
+        r = await api.patch(f"/api/users/{uid2}/employee", headers=auth(world["A"]["token"]),
+                            json={"employee_id": alice["id"]})
+        assert r.status_code == 400
+    finally:
+        await db.execute("delete from auth.users where id=$1", uuid.UUID(uid1))
+        await db.execute("delete from auth.users where id=$1", uuid.UUID(uid2))
+
+
+async def test_link_user_employee_requires_hr_admin(api, world):
+    r = await api.patch(f"/api/users/{uuid.uuid4()}/employee", headers=auth(world["emp_token"]),
+                        json={"employee_id": None})
+    assert r.status_code == 403
