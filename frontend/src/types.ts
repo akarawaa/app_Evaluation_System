@@ -156,6 +156,9 @@ export type Acknowledgement = {
 export type EvalDetail = {
   id: string
   employee_id: string
+  employee_code: string | null
+  employee_name: string | null
+  employee_position: string | null
   evaluator_id: string | null
   evaluator_name: string | null
   emp_supervisor_id: string | null

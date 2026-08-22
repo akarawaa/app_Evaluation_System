@@ -174,6 +174,10 @@ async def test_full_lifecycle(api, org):
     assert len(ev["items"]) == 28
     # BARS anchors are snapshotted onto each item (desc_1..5 filled by seed)
     assert all(ev["items"][0][f"desc_{n}"] for n in range(1, 6))
+    # Detail names everyone: the subject (so you know whose evaluation this is)
+    # plus the evaluator, so no viewer has to guess from status alone.
+    assert ev["employee_name"]
+    assert ev["evaluator_name"]
 
     # supervisor scores all items = 4; HR records attendance (override 30, since
     # attendance is HR-owned data, not something the evaluator sets)

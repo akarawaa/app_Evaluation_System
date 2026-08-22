@@ -83,13 +83,22 @@ async def _load(session: AsyncSession, eval_id: str) -> dict:
 
 async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     ev = await _load(session, eval_id)
-    # Names for the evaluator / dept-manager approver, so the detail page can
-    # show who's who instead of leaving viewers to guess from status alone.
+    # The subject (who is being evaluated) plus the evaluator / dept-manager
+    # approver, so the detail page names everyone instead of leaving viewers to
+    # guess from status alone. The subject's name matters most -- without it you
+    # can't tell whose evaluation you opened.
     names = (await session.execute(text(
         "select "
+        "  (select emp_code  from employees where id = :employee_id) as employee_code, "
+        "  (select full_name from employees where id = :employee_id) as employee_name, "
+        "  (select position  from employees where id = :employee_id) as employee_position, "
         "  (select full_name from employees where id = :evaluator_id) as evaluator_name, "
         "  (select full_name from employees where id = :manager_id) as dept_manager_name"
-    ), {"evaluator_id": ev.get("evaluator_id"), "manager_id": ev.get("emp_manager_id")})).mappings().first()
+    ), {"employee_id": ev.get("employee_id"), "evaluator_id": ev.get("evaluator_id"),
+        "manager_id": ev.get("emp_manager_id")})).mappings().first()
+    ev["employee_code"] = names["employee_code"] if names else None
+    ev["employee_name"] = names["employee_name"] if names else None
+    ev["employee_position"] = names["employee_position"] if names else None
     ev["evaluator_name"] = names["evaluator_name"] if names else None
     ev["dept_manager_name"] = names["dept_manager_name"] if names else None
     items = (await session.execute(text(

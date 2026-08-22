@@ -121,7 +121,15 @@ export default function EvaluationDetail() {
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5 flex flex-wrap gap-x-8 gap-y-2 text-sm items-center">
+        <section className="bg-white rounded-xl shadow p-5 space-y-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-3">
+            <h2 className="text-lg font-semibold text-slate-800">
+              {ev.employee_name ?? 'พนักงาน'}
+            </h2>
+            {ev.employee_code && <span className="text-sm text-slate-500">รหัส {ev.employee_code}</span>}
+            {ev.employee_position && <span className="text-sm text-slate-500">· {ev.employee_position}</span>}
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm items-center">
           <div><span className="text-slate-500">สถานะ:</span> <b>{STATUS_LABEL[ev.status] ?? ev.status}</b></div>
           <div><span className="text-slate-500">ชนิด:</span> {ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
           <div><span className="text-slate-500">ผู้ให้คะแนน:</span> {ev.evaluator_name ?? '—'}</div>
@@ -132,6 +140,7 @@ export default function EvaluationDetail() {
           <button
             onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
             className="ml-auto text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
+          </div>
         </section>
 
         {categories.map(([order, cat]) => (
