@@ -16,6 +16,7 @@ export default function Evaluations() {
   const [employeeId, setEmployeeId] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [kind, setKind] = useState('annual')
+  const [checkpoint, setCheckpoint] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -34,6 +35,7 @@ export default function Evaluations() {
 
   const create = async () => {
     if (!employeeId || !templateId) return
+    if (kind === 'probation' && !checkpoint) return
     setBusy(true)
     setError(null)
     try {
@@ -41,6 +43,9 @@ export default function Evaluations() {
         employee_id: employeeId,
         template_id: templateId,
         kind,
+        // probation requires a checkpoint (DB constraint eval_kind_checkpoint);
+        // annual must not send one.
+        probation_checkpoint: kind === 'probation' ? checkpoint : undefined,
       })
       navigate(`/evaluations/${ev.id}`)
     } catch (e) {
@@ -110,12 +115,25 @@ export default function Evaluations() {
               </label>
               <label className="text-sm">
                 <span className="block text-slate-500">ชนิด</span>
-                <select className="border rounded px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value)}>
+                <select className="border rounded px-2 py-1" value={kind}
+                  onChange={(e) => { setKind(e.target.value); if (e.target.value === 'annual') setCheckpoint('') }}>
                   <option value="annual">ประจำปี</option>
                   <option value="probation">ทดลองงาน</option>
                 </select>
               </label>
-              <button onClick={create} disabled={busy || !employeeId || !templateId}
+              {kind === 'probation' && (
+                <label className="text-sm">
+                  <span className="block text-slate-500">ช่วงประเมิน (วัน)</span>
+                  <select className="border rounded px-2 py-1" value={checkpoint} onChange={(e) => setCheckpoint(e.target.value)}>
+                    <option value="">— เลือก —</option>
+                    <option value="30">30 วัน</option>
+                    <option value="60">60 วัน</option>
+                    <option value="90">90 วัน</option>
+                    <option value="119">119 วัน</option>
+                  </select>
+                </label>
+              )}
+              <button onClick={create} disabled={busy || !employeeId || !templateId || (kind === 'probation' && !checkpoint)}
                 className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
                 สร้าง
               </button>

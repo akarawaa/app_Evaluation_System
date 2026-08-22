@@ -138,6 +138,29 @@ async def test_create_rejects_master_template_directly(api, org, db):
     assert r.status_code == 400
 
 
+async def test_create_probation_requires_checkpoint(api, org):
+    """kind='probation' without a checkpoint used to slip past the API and only
+    fail at the DB check constraint (eval_kind_checkpoint) as a raw 500. It must
+    be rejected up front (422); supplying a valid checkpoint then succeeds."""
+    bad = {"employee_id": org["e_emp"], "template_id": org["template_id"], "kind": "probation"}
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=bad)
+    assert r.status_code == 422, r.text
+
+    ok = {**bad, "probation_checkpoint": "90"}
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=ok)
+    assert r.status_code == 201, r.text
+    assert r.json()["probation_checkpoint"] == "90"
+
+
+async def test_create_annual_rejects_checkpoint(api, org):
+    """The inverse: an annual evaluation must not carry a checkpoint (mirrors
+    the other half of the eval_kind_checkpoint constraint)."""
+    payload = {"employee_id": org["e_emp"], "template_id": org["template_id"],
+               "kind": "annual", "probation_checkpoint": "30"}
+    r = await api.post("/api/evaluations", headers=auth(org["sup"]), json=payload)
+    assert r.status_code == 422, r.text
+
+
 async def test_full_lifecycle(api, org):
     # employee (subject) may NOT create an evaluation for themselves
     r = await api.post("/api/evaluations", headers=auth(org["emp"]), json=_new(org))

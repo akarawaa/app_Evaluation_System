@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EvaluationCreate(BaseModel):
@@ -13,6 +13,17 @@ class EvaluationCreate(BaseModel):
     cycle_id: Optional[UUID] = None
     period_start: Optional[date] = None
     period_end: Optional[date] = None
+
+    @model_validator(mode="after")
+    def _kind_checkpoint_match(self) -> "EvaluationCreate":
+        # Mirrors the DB check constraint eval_kind_checkpoint so a mismatch is
+        # rejected as a clear 422 up front instead of surfacing as a raw 500
+        # IntegrityError from the insert.
+        if self.kind == "probation" and self.probation_checkpoint is None:
+            raise ValueError("probation evaluations require a checkpoint (30/60/90/119)")
+        if self.kind == "annual" and self.probation_checkpoint is not None:
+            raise ValueError("annual evaluations must not have a checkpoint")
+        return self
 
 
 class ScoreIn(BaseModel):

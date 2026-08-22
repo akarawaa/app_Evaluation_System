@@ -83,6 +83,15 @@ async def _load(session: AsyncSession, eval_id: str) -> dict:
 
 async def get_detail(session: AsyncSession, eval_id: str) -> dict:
     ev = await _load(session, eval_id)
+    # Names for the evaluator / dept-manager approver, so the detail page can
+    # show who's who instead of leaving viewers to guess from status alone.
+    names = (await session.execute(text(
+        "select "
+        "  (select full_name from employees where id = :evaluator_id) as evaluator_name, "
+        "  (select full_name from employees where id = :manager_id) as dept_manager_name"
+    ), {"evaluator_id": ev.get("evaluator_id"), "manager_id": ev.get("emp_manager_id")})).mappings().first()
+    ev["evaluator_name"] = names["evaluator_name"] if names else None
+    ev["dept_manager_name"] = names["dept_manager_name"] if names else None
     items = (await session.execute(text(
         "select i.id, i.category_order, i.category_name, i.item_order, i.item_name, "
         "i.weight, i.desc_1, i.desc_2, i.desc_3, i.desc_4, i.desc_5, s.score "
