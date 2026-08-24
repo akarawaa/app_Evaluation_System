@@ -18,7 +18,14 @@ const NAV_ITEMS: NavItem[] = [
     to: '/evaluations', label: 'ใบประเมินผล', show: () => true,
     isActive: (p) => p === '/evaluations' || (p.startsWith('/evaluations/') && p !== '/evaluations/compare'),
   },
-  { to: '/evaluations/compare', label: 'เปรียบเทียบผล', show: () => true, isActive: (p) => p === '/evaluations/compare' },
+  {
+    // A cross-evaluation analysis tool -- meaningful for people who oversee
+    // many evaluations at once (HR/GM/MD/super_admin), not for a supervisor
+    // who only ever scores their own reports' single forms.
+    to: '/evaluations/compare', label: 'เปรียบเทียบผล',
+    show: (me) => !!me && (me.is_super_admin || ['hr_admin', 'gm', 'md'].some((r) => me.roles.includes(r))),
+    isActive: (p) => p === '/evaluations/compare',
+  },
   {
     // hr_admin only -- their own company_id scopes this page unambiguously
     // via RLS. super_admin has no single "own company" for this page to mean
