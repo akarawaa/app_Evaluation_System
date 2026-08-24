@@ -143,6 +143,59 @@ export default function EvaluationDetail() {
           </div>
         </section>
 
+        <section className="sticky top-2 z-10 bg-white rounded-xl shadow-md border border-slate-200 px-4 py-2.5 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-slate-600 truncate">
+            {ev.employee_name ?? 'พนักงาน'} <span className="text-slate-400">· {STATUS_LABEL[ev.status] ?? ev.status}</span>
+          </span>
+          <div className="flex flex-wrap gap-2 items-center ml-auto">
+            {canEditNow && (
+              <>
+                <button onClick={save} disabled={busy} className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกคะแนน</button>
+                <button onClick={() => transition('submit', 'ส่งประเมินแล้ว')} disabled={busy} className="bg-blue-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ส่งประเมิน</button>
+              </>
+            )}
+            {ev.status === 'submitted' && isDeptApprover && (
+              <>
+                <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy} className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
+                <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
+              </>
+            )}
+            {ev.status === 'dept_approved' && isMd && (
+              <>
+                {/* Backend blocks this until the employee has signed; disable rather
+                    than let GM/MD click into a 409. */}
+                <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy || !ev.acknowledgement}
+                  title={!ev.acknowledgement ? 'ต้องบันทึกการรับทราบของพนักงานก่อน' : undefined}
+                  className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
+                <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
+                {!ev.acknowledgement && (
+                  <p className="text-xs text-amber-600">ต้องบันทึกการรับทราบของพนักงานก่อนจึงจะอนุมัติได้</p>
+                )}
+              </>
+            )}
+            {ev.status === 'md_approved' && isHr && (
+              <>
+                <button onClick={() => transition('finalize', 'ปิดใบแล้ว')} disabled={busy} className="bg-green-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">สรุป/ปิดใบ (HR)</button>
+                <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
+              </>
+            )}
+            {editable && !isEvaluator && (
+              <p className="text-sm text-slate-400">รอหัวหน้างานที่ได้รับมอบหมายให้คะแนน</p>
+            )}
+            {ev.status === 'submitted' && !isDeptApprover && (
+              <p className="text-sm text-slate-400">รอผจก.แผนกอนุมัติ</p>
+            )}
+            {ev.status === 'dept_approved' && !isMd && (
+              <p className="text-sm text-slate-400">
+                {ev.acknowledgement ? 'รอ GM/MD อนุมัติ' : 'รอพนักงานลงนามรับทราบ ก่อนส่งให้ GM/MD อนุมัติ'}
+              </p>
+            )}
+            {ev.status === 'md_approved' && !isHr && (
+              <p className="text-sm text-slate-400">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
+            )}
+          </div>
+        </section>
+
         {categories.map(([order, cat]) => (
           <section key={order} className="bg-white rounded-xl shadow p-5">
             <h3 className="font-medium text-slate-700 mb-2">{order}. {cat.name}</h3>
@@ -249,54 +302,6 @@ export default function EvaluationDetail() {
               <button onClick={saveAttendance} disabled={busy}
                 className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกข้อมูลการมา-ลา</button>
             </div>
-          )}
-        </section>
-
-        <section className="flex flex-wrap gap-2">
-          {canEditNow && (
-            <>
-              <button onClick={save} disabled={busy} className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกคะแนน</button>
-              <button onClick={() => transition('submit', 'ส่งประเมินแล้ว')} disabled={busy} className="bg-blue-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ส่งประเมิน</button>
-            </>
-          )}
-          {ev.status === 'submitted' && isDeptApprover && (
-            <>
-              <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy} className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
-              <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
-            </>
-          )}
-          {ev.status === 'dept_approved' && isMd && (
-            <>
-              {/* Backend blocks this until the employee has signed; disable rather
-                  than let GM/MD click into a 409. */}
-              <button onClick={() => transition('approve', 'อนุมัติแล้ว')} disabled={busy || !ev.acknowledgement}
-                title={!ev.acknowledgement ? 'ต้องบันทึกการรับทราบของพนักงานก่อน' : undefined}
-                className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">อนุมัติ</button>
-              <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
-              {!ev.acknowledgement && (
-                <p className="text-sm text-amber-600 self-center">ต้องบันทึกการรับทราบของพนักงานก่อนจึงจะอนุมัติได้</p>
-              )}
-            </>
-          )}
-          {ev.status === 'md_approved' && isHr && (
-            <>
-              <button onClick={() => transition('finalize', 'ปิดใบแล้ว')} disabled={busy} className="bg-green-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">สรุป/ปิดใบ (HR)</button>
-              <button onClick={() => transition('return', 'ตีกลับแล้ว')} disabled={busy} className="bg-amber-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ตีกลับ</button>
-            </>
-          )}
-          {editable && !isEvaluator && (
-            <p className="text-sm text-slate-400 self-center">รอหัวหน้างานที่ได้รับมอบหมายให้คะแนน</p>
-          )}
-          {ev.status === 'submitted' && !isDeptApprover && (
-            <p className="text-sm text-slate-400 self-center">รอผจก.แผนกอนุมัติ</p>
-          )}
-          {ev.status === 'dept_approved' && !isMd && (
-            <p className="text-sm text-slate-400 self-center">
-              {ev.acknowledgement ? 'รอ GM/MD อนุมัติ' : 'รอพนักงานลงนามรับทราบ ก่อนส่งให้ GM/MD อนุมัติ'}
-            </p>
-          )}
-          {ev.status === 'md_approved' && !isHr && (
-            <p className="text-sm text-slate-400 self-center">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
           )}
         </section>
 
