@@ -93,7 +93,10 @@ export default function Evaluations() {
 
         {canCreate && (
           <section className="bg-white rounded-xl shadow p-5">
-            <h2 className="font-medium mb-3 text-slate-700">สร้างใบประเมิน (หัวหน้างาน)</h2>
+            <h2 className="font-medium text-slate-700">สร้างใบประเมิน</h2>
+            <p className="text-xs text-slate-500 mb-3">
+              {isHrOrAbove ? 'สร้างแทนพนักงานคนใดก็ได้ในบริษัท — ผู้ให้คะแนนจริงคือหัวหน้างานที่ผูกไว้กับพนักงานคนนั้น' : 'สร้างสำหรับลูกน้องของคุณ'}
+            </p>
             <div className="flex flex-wrap gap-2 items-end">
               <label className="text-sm">
                 <span className="block text-slate-500">พนักงาน</span>
