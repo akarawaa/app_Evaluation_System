@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
-import { LEVEL_LABEL } from '../types'
+import type { InboxItem } from '../types'
+import { ACTION_LABEL, LEVEL_LABEL } from '../types'
 
 type Employee = {
   id: string
@@ -17,10 +18,14 @@ type Employee = {
 export default function Dashboard() {
   const { me } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [inbox, setInbox] = useState<InboxItem[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     apiGet<Employee[]>('/api/employees').then(setEmployees).catch((e) => setError(String(e)))
+    // Best-effort: an empty inbox just means no CTA card below, not an error
+    // worth surfacing on the landing page.
+    apiGet<InboxItem[]>('/api/evaluations/inbox').then(setInbox).catch(() => undefined)
   }, [])
 
   const isHrAdmin = me?.roles.includes('hr_admin') || me?.is_super_admin
@@ -31,6 +36,24 @@ export default function Dashboard() {
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">
         {error && <p className="text-red-600">{error}</p>}
+
+        {inbox.length > 0 && (
+          <Link to="/inbox" className="block bg-white rounded-xl shadow border border-blue-200 p-5 hover:border-blue-400 transition-colors">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-medium text-slate-800">งานรอดำเนินการของคุณ</h2>
+                  <span className="text-xs font-semibold bg-blue-600 text-white rounded-full px-2 py-0.5">{inbox.length}</span>
+                </div>
+                <p className="text-sm text-slate-500 mt-1">
+                  {inbox.slice(0, 2).map((it) => `${it.full_name} ${ACTION_LABEL[it.action]}`).join(' · ')}
+                  {inbox.length > 2 ? ` และอีก ${inbox.length - 2} รายการ` : ''}
+                </p>
+              </div>
+              <span className="text-sm text-blue-600 font-medium whitespace-nowrap">ไปที่งานที่รอฉัน →</span>
+            </div>
+          </Link>
+        )}
 
         {me && (
           <section className="bg-white rounded-xl shadow p-5">
