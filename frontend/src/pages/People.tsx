@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
-import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, ImportResult, TenantUser } from '../types'
-import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL } from '../types'
+import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, EvalListItem, ImportResult, TenantUser } from '../types'
+import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL, STATUS_LABEL } from '../types'
 
 const emptyForm = {
   emp_code: '', full_name: '', position: '', level: 'operational',
@@ -34,6 +34,7 @@ export default function People() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [users, setUsers] = useState<TenantUser[]>([])
+  const [evaluations, setEvaluations] = useState<EvalListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -61,9 +62,13 @@ export default function People() {
     apiGet<Employee[]>(`/api/employees${qs}`).then(setEmployees),
     apiGet<Branch[]>(`/api/branches${qs}`).then(setBranches),
     apiGet<TenantUser[]>(`/api/users${qs}`).then(setUsers),
-    // attendance formula/import aren't scoped to a specific company yet --
-    // out of scope for cross-company browsing for now, hidden below instead.
+    // attendance formula/import/evaluations aren't scoped to a specific
+    // company yet -- out of scope for cross-company browsing for now,
+    // hidden below instead (GET /api/evaluations has no company_id param;
+    // calling it while browsing another tenant would leak that tenant's
+    // evaluations into a super_admin's own RLS-bypassed view).
     companyId ? Promise.resolve() : apiGet<AttendanceFormula>('/api/settings/attendance-formula').then(setFormula),
+    companyId ? Promise.resolve() : apiGet<EvalListItem[]>('/api/evaluations').then(setEvaluations),
   ]).catch((e) => setError(String(e)))
 
   useEffect(() => { load() }, [companyId])
@@ -180,6 +185,14 @@ export default function People() {
   const linkUserEmployee = (u: TenantUser, employeeId: string) =>
     run(() => apiSend('PATCH', `/api/users/${u.id}/employee${qs}`, { employee_id: employeeId || null }),
       employeeId ? 'ผูกกับพนักงานแล้ว' : 'ปลดการผูกแล้ว')
+
+  // GET /api/evaluations is already ordered created_at desc (see
+  // services/evaluations.list_all), so the first row per employee_id is
+  // their most recent evaluation -- no extra sort needed here.
+  const latestEvalByEmployee = new Map<string, EvalListItem>()
+  for (const ev of evaluations) {
+    if (!latestEvalByEmployee.has(ev.employee_id)) latestEvalByEmployee.set(ev.employee_id, ev)
+  }
 
   // Cross-company browsing (super_admin via TenantDetail) doesn't support
   // file import / formula settings yet -- those tabs are hidden entirely
@@ -491,7 +504,7 @@ export default function People() {
                 <tr className="text-left text-slate-500 border-b">
                   <th className="py-1 pr-2 whitespace-nowrap">รหัส</th><th className="pr-2 whitespace-nowrap">ชื่อ</th><th className="pr-2 whitespace-nowrap">ประเภทแบบประเมิน</th>
                   <th className="pr-2 whitespace-nowrap">สาขา</th><th className="pr-2 whitespace-nowrap">หัวหน้า</th><th className="pr-2 whitespace-nowrap">ผจก.แผนก</th>
-                  <th className="pr-2 whitespace-nowrap">สถานะ</th><th></th>
+                  <th className="pr-2 whitespace-nowrap">สถานะ</th><th className="pr-2 whitespace-nowrap">ใบประเมินล่าสุด</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -508,6 +521,19 @@ export default function People() {
                         {emp.status === 'active' ? 'ทำงานอยู่' : 'ปิดใช้งาน'}
                       </span>
                     </td>
+                    <td className="pr-2 whitespace-nowrap">
+                      {(() => {
+                        const latest = latestEvalByEmployee.get(emp.id)
+                        return latest ? (
+                          <Link to={`/evaluations/${latest.id}`} className="text-blue-600 hover:text-blue-800 text-xs">
+                            {STATUS_LABEL[latest.status] ?? latest.status}
+                            {latest.percentage != null ? ` · ${latest.percentage}%` : ''} →
+                          </Link>
+                        ) : (
+                          <span className="text-slate-300 text-xs">— ไม่มี —</span>
+                        )
+                      })()}
+                    </td>
                     <td className="whitespace-nowrap">
                       <button onClick={() => startEdit(emp)} className="text-blue-600 text-xs font-medium mr-2">แก้ไข</button>
                       <button onClick={() => toggleStatus(emp)} className="text-slate-500 text-xs font-medium">
@@ -517,7 +543,7 @@ export default function People() {
                   </tr>
                 ))}
                 {employees.length === 0 && (
-                  <tr><td colSpan={8} className="py-3 text-slate-400">ยังไม่มีพนักงาน</td></tr>
+                  <tr><td colSpan={9} className="py-3 text-slate-400">ยังไม่มีพนักงาน</td></tr>
                 )}
               </tbody>
             </table>
