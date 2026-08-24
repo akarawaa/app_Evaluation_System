@@ -4,16 +4,8 @@ import { Link } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
-import type { InboxItem } from '../types'
+import type { Employee, InboxItem } from '../types'
 import { ACTION_LABEL, LEVEL_LABEL } from '../types'
-
-type Employee = {
-  id: string
-  emp_code: string
-  full_name: string
-  level: string
-  status: string
-}
 
 export default function Dashboard() {
   const { me } = useAuth()
@@ -29,6 +21,18 @@ export default function Dashboard() {
   }, [])
 
   const isHrAdmin = me?.roles.includes('hr_admin') || me?.is_super_admin
+  // A supervisor/dept manager cares about their own reports, not the whole
+  // company roster -- narrow the table to just that when it applies (HR/
+  // super_admin still get the full company view, same as before).
+  const myReports = me?.employee_id
+    ? employees.filter((e) => e.supervisor_id === me.employee_id || e.manager_id === me.employee_id)
+    : []
+  const rosterTitle = isHrAdmin ? 'พนักงาน (ทั้งบริษัท)' : `ทีมของคุณ (${myReports.length} คน)`
+  const roster = isHrAdmin ? employees : myReports
+  // Nothing to manage and nothing pending -- an account like this (GM/MD with
+  // no direct reports, or a freshly invited profile) doesn't need an empty
+  // roster table taking up the page.
+  const showRoster = isHrAdmin || myReports.length > 0
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -70,41 +74,43 @@ export default function Dashboard() {
           </section>
         )}
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="font-medium text-slate-700">พนักงาน (เห็นเฉพาะ tenant ของคุณ)</h2>
-            {isHrAdmin && (
-              <Link to="/people" className="text-xs text-blue-600 hover:text-blue-800">จัดการพนักงาน &amp; สาขา →</Link>
-            )}
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500 border-b">
-                <th className="py-1">รหัส</th>
-                <th>ชื่อ</th>
-                <th>ประเภทแบบประเมิน</th>
-                <th>สถานะ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((e) => (
-                <tr key={e.id} className="border-b last:border-0">
-                  <td className="py-1">{e.emp_code}</td>
-                  <td>{e.full_name}</td>
-                  <td>{LEVEL_LABEL[e.level] ?? e.level}</td>
-                  <td>{e.status}</td>
-                </tr>
-              ))}
-              {employees.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-3 text-slate-400">
-                    ไม่มีข้อมูล
-                  </td>
-                </tr>
+        {showRoster && (
+          <section className="bg-white rounded-xl shadow p-5">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="font-medium text-slate-700">{rosterTitle}</h2>
+              {isHrAdmin && (
+                <Link to="/people" className="text-xs text-blue-600 hover:text-blue-800">จัดการพนักงาน &amp; สาขา →</Link>
               )}
-            </tbody>
-          </table>
-        </section>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500 border-b">
+                  <th className="py-1">รหัส</th>
+                  <th>ชื่อ</th>
+                  <th>ประเภทแบบประเมิน</th>
+                  <th>สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((e) => (
+                  <tr key={e.id} className="border-b last:border-0">
+                    <td className="py-1">{e.emp_code}</td>
+                    <td>{e.full_name}</td>
+                    <td>{LEVEL_LABEL[e.level] ?? e.level}</td>
+                    <td>{e.status}</td>
+                  </tr>
+                ))}
+                {roster.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-3 text-slate-400">
+                      ไม่มีข้อมูล
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
+        )}
       </main>
     </div>
   )
