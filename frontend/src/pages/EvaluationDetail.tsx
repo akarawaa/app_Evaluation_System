@@ -9,6 +9,14 @@ import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
 const SCORE_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
+// Steps completed for each status, out of the 5-step approval chain below.
+// "returned" resets to the same point as "draft" -- scoring starts over, so
+// it shows the same progress as before anything was submitted.
+const STEP_LABELS = ['สร้าง', 'ให้คะแนน', 'ผจก.แผนก', 'GM/MD', 'HR']
+const STATUS_STEPS_DONE: Record<string, number> = {
+  draft: 1, returned: 1, submitted: 2, dept_approved: 3, md_approved: 4, finalized: 5,
+}
+
 export default function EvaluationDetail() {
   const { me } = useAuth()
   const { id } = useParams<{ id: string }>()
@@ -61,6 +69,7 @@ export default function EvaluationDetail() {
   // section appears from dept_approved onward (and stays visible afterwards).
   const showAckSection = ['dept_approved', 'md_approved', 'finalized'].includes(ev?.status ?? '')
   const canEditNow = editable && isEvaluator
+  const stepsDone = STATUS_STEPS_DONE[ev?.status ?? ''] ?? 0
 
   const categories = useMemo(() => {
     const map = new Map<number, { name: string; items: EvalDetail['items'] }>()
@@ -140,6 +149,31 @@ export default function EvaluationDetail() {
           <button
             onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
             className="ml-auto text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
+          </div>
+
+          <div className="flex items-start max-w-md">
+            {STEP_LABELS.map((label, i) => {
+              const stepNum = i + 1
+              const done = stepNum <= stepsDone
+              const current = stepNum === stepsDone + 1 && ev.status !== 'finalized'
+              return (
+                <div key={label} className="flex items-center flex-1 last:flex-none">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className={
+                      done ? 'w-2.5 h-2.5 rounded-full bg-green-500'
+                        : current ? 'w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100'
+                          : 'w-2.5 h-2.5 rounded-full bg-slate-200'
+                    } />
+                    <span className={current ? 'text-[10px] text-blue-700 font-medium whitespace-nowrap' : 'text-[10px] text-slate-400 whitespace-nowrap'}>
+                      {label}
+                    </span>
+                  </div>
+                  {i < STEP_LABELS.length - 1 && (
+                    <div className={stepNum < stepsDone ? 'h-px flex-1 mx-1 mb-4 bg-green-400' : 'h-px flex-1 mx-1 mb-4 bg-slate-200'} />
+                  )}
+                </div>
+              )
+            })}
           </div>
         </section>
 
