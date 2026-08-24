@@ -166,9 +166,9 @@ export default function EvaluationDetail() {
                       </select>
                     </div>
                     {hasAnchors && (
-                      <details className="mt-1 group">
+                      <details className="mt-1 group" open>
                         <summary className="text-xs text-blue-600 cursor-pointer select-none list-none">
-                          เกณฑ์การให้คะแนน (BARS) ▾
+                          เกณฑ์การให้คะแนน (BARS) ▴
                         </summary>
                         <ul className="mt-1 space-y-0.5 pl-1">
                           {anchors.map((a, i) => {
