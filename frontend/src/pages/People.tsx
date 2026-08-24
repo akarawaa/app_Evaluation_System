@@ -29,6 +29,8 @@ export default function People() {
   const companyName = params.get('company_name')
   const qs = companyId ? `?company_id=${companyId}` : ''
 
+  const [tab, setTab] = useState<'employees' | 'branches' | 'users' | 'import' | 'settings'>('employees')
+
   const [employees, setEmployees] = useState<Employee[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [users, setUsers] = useState<TenantUser[]>([])
@@ -179,6 +181,19 @@ export default function People() {
     run(() => apiSend('PATCH', `/api/users/${u.id}/employee${qs}`, { employee_id: employeeId || null }),
       employeeId ? 'ผูกกับพนักงานแล้ว' : 'ปลดการผูกแล้ว')
 
+  // Cross-company browsing (super_admin via TenantDetail) doesn't support
+  // file import / formula settings yet -- those tabs are hidden entirely
+  // rather than shown-but-broken (see the notice above).
+  const TABS: { id: typeof tab; label: string }[] = [
+    { id: 'employees', label: 'พนักงาน' },
+    { id: 'branches', label: 'สาขา' },
+    { id: 'users', label: 'ผู้ใช้ระบบ' },
+    ...(companyId ? [] : [
+      { id: 'import' as const, label: 'นำเข้าข้อมูล' },
+      { id: 'settings' as const, label: 'ตั้งค่า' },
+    ]),
+  ]
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader title={companyName ? `จัดการพนักงาน & สาขา — ${companyName}` : 'จัดการพนักงาน & สาขา'} />
@@ -193,7 +208,23 @@ export default function People() {
           </p>
         )}
 
-        {!companyId && (
+        <nav className="flex items-center gap-4 border-b">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={
+                tab === t.id
+                  ? 'text-sm font-medium text-blue-700 border-b-2 border-blue-700 pb-2 -mb-px'
+                  : 'text-sm text-slate-500 hover:text-slate-800 pb-2'
+              }
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        {tab === 'import' && !companyId && (
         <>
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-1 text-slate-700">นำเข้าพนักงานจากไฟล์</h2>
@@ -305,7 +336,10 @@ export default function People() {
             </div>
           )}
         </section>
+        </>
+        )}
 
+        {tab === 'settings' && !companyId && (
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-1 text-slate-700">สูตรคำนวณคะแนนการมา-ลา</h2>
           <p className="text-xs text-slate-500 mb-3">
@@ -351,9 +385,9 @@ export default function People() {
             </div>
           )}
         </section>
-        </>
         )}
 
+        {tab === 'branches' && (
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">สาขา</h2>
           <ul className="divide-y mb-3">
@@ -383,7 +417,10 @@ export default function People() {
               className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">เพิ่มสาขา</button>
           </div>
         </section>
+        )}
 
+        {tab === 'employees' && (
+        <>
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-3 text-slate-700">{editingId ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงาน'}</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -486,7 +523,10 @@ export default function People() {
             </table>
           </div>
         </section>
+        </>
+        )}
 
+        {tab === 'users' && (
         <section className="bg-white rounded-xl shadow p-5">
           <h2 className="font-medium mb-1 text-slate-700">ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)</h2>
           <p className="text-xs text-slate-500 mb-3">
@@ -569,6 +609,7 @@ export default function People() {
             </tbody>
           </table>
         </section>
+        )}
       </main>
     </div>
   )
