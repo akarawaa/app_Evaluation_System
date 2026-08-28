@@ -186,6 +186,15 @@ export default function People() {
     run(() => apiSend('PATCH', `/api/users/${u.id}/employee${qs}`, { employee_id: employeeId || null }),
       employeeId ? 'ผูกกับพนักงานแล้ว' : 'ปลดการผูกแล้ว')
 
+  // Revoke one role only -- login/profile/other roles untouched (contrast
+  // with toggleUserStatus, which bans the whole login for a resignation).
+  // For a department transfer: pull the old role off without kicking the
+  // person out of the system entirely. No confirm() dialog -- matches
+  // toggleUserStatus above, an equally one-click reversible action (just
+  // re-grant the role if clicked by mistake).
+  const revokeRole = (u: TenantUser, role: string) =>
+    run(() => apiSend('DELETE', `/api/users/${u.id}/roles/${role}${qs}`), 'ถอดบทบาทแล้ว')
+
   // GET /api/evaluations is already ordered created_at desc (see
   // services/evaluations.list_all), so the first row per employee_id is
   // their most recent evaluation -- no extra sort needed here.
@@ -606,7 +615,22 @@ export default function People() {
               {users.map((u) => (
                 <tr key={u.id} className="border-b last:border-0">
                   <td className="py-1.5 pr-2">{u.display_name ?? '—'}</td>
-                  <td>{u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || '—'}</td>
+                  <td>
+                    {u.roles.length === 0 && '—'}
+                    {u.roles.map((r) => (
+                      <span key={r} className="inline-flex items-center gap-1 bg-slate-100 rounded-full pl-2 pr-1 py-0.5 mr-1 mb-0.5 text-xs">
+                        {ROLE_LABEL[r] ?? r}
+                        <button
+                          onClick={() => revokeRole(u, r)}
+                          disabled={busy}
+                          title={`ถอดบทบาท ${ROLE_LABEL[r] ?? r}`}
+                          className="text-slate-400 hover:text-red-600 disabled:opacity-50 leading-none"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </td>
                   <td>
                     <select className="border rounded px-1.5 py-0.5 text-xs" value={u.employee_id ?? ''} disabled={busy}
                       onChange={(e) => linkUserEmployee(u, e.target.value)}>

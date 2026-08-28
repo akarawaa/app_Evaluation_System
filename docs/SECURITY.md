@@ -41,6 +41,15 @@
 - **`auth.users.banned_until` อ่านผ่าน SECURITY DEFINER เท่านั้น** (`app.list_company_users`) เพราะ session ปกติอ่าน `auth.users` ตรงไม่ได้ (เหตุผลเดียวกับ `find_profile_by_email` ใน `0021`) — self-guard: `is_super_admin() or p_company_id = current_company_id()`
 - พิสูจน์: pytest ใหม่ 4 เคส (`test_user_account_status.py`) ทดสอบ login จริงหลัง ban/unban ผ่าน GoTrue จริง (ไม่ mock) + ยืนยันซ้ำด้วย manual E2E ผ่าน curl (invite → deactivate → login ได้ 400 → reactivate → login ได้ 200) รวม pytest ทั้งชุด 112/112
 
+### ถอด role เดียวออก (`services/tenant_admin.py::revoke_role`, `DELETE /api/users/{id}/roles/{code}`)
+คนโยกย้ายแผนก/เปลี่ยนบทบาทต้องถอดสิทธิ์เดิมได้โดยไม่ต้อง ban ทั้งบัญชี (ban ทั้งบัญชีเหมาะกับลาออกเท่านั้น — ดูหัวข้อก่อนหน้า) — เดิมไม่มีทางทำเลย มีแต่ invite (ตั้ง role ตอนสร้างบัญชี) กับ grant (เพิ่ม role, super_admin เท่านั้น)
+- **`role_code` ต้องอยู่ใน `INVITABLE_ROLES` เดียวกับ invite_user/grant_company_access** → `super_admin` ไม่มีทาง mint/revoke ผ่าน tenant-scoped API นี้ได้เลย (A01 — privilege escalation ผ่าน endpoint ที่ตั้งใจให้จำกัดขอบเขต role)
+- **กันถอด role ตัวเอง:** เช็ค `profile_id == actor_id` → 400 ทันที เหมือน `set_user_status` (กันล็อกตัวเองออกจากสิทธิ์โดยไม่ตั้งใจ ไม่มีใครมาคืนให้)
+- **ตรวจว่า user เป็นของบริษัทที่กำลังจัดการอยู่จริง** ก่อน delete ทุกครั้ง (`where id = :pid and company_id = :cid`) — pattern เดียวกับ `set_user_status`/`link_user_employee` (hr_admin จัดการเฉพาะบริษัทตัวเอง, super_admin ระบุ `company_id` ได้)
+- **ไม่แตะ login/profile/role อื่นเลย** — ตรงข้ามกับ ban ทั้งบัญชี บัญชียังใช้งานได้ปกติภายใต้ role ที่เหลือ (หรือ 0 role ถ้าไม่เหลือเลย ก็ยัง login ได้แค่เห็นเมนูว่าง ไม่ใช่ 403 ทั้งระบบ)
+- audit log `role_revoked` (before เก็บ role ที่ถอด)
+- พิสูจน์: pytest ใหม่ 7 เคส (`test_tenant_admin.py`) รวมทั้งชุด 131/131 + browser จริง (ถอด `dept_manager` ออกจากบัญชีจริง เหลือ `hr_admin` → คืนค่าเดิมหลังพิสูจน์เสร็จ)
+
 ## A02 — Cryptographic Failures
 - **In transit:** HTTPS/TLS ทุก endpoint (บังคับ), HSTS
 - **At rest:** Supabase Postgres เข้ารหัส disk; ข้อมูลอ่อนไหว (PDPA) ไม่เก็บเกินจำเป็น

@@ -148,6 +148,46 @@ async def grant_company_access(
     return {"user_id": str(profile_id), "email": email, "role": role_code}
 
 
+async def revoke_role(
+    session: AsyncSession, actor_id: str, company_id: str, profile_id: str, role_code: str,
+) -> dict:
+    """Remove one role from a user without touching their login/profile/other
+    roles -- for a department transfer where the account should keep working
+    under whatever roles remain, just without this one (contrast with
+    set_user_status below, which bans the whole login for a resignation
+    instead). Same INVITABLE_ROLES guard as invite_user/grant_company_access
+    -- super_admin isn't grantable/revocable through this tenant-scoped API
+    at all, so it can never accidentally be stripped this way either."""
+    if role_code not in INVITABLE_ROLES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"invalid role: {role_code}")
+    if profile_id == actor_id:
+        # Same guard as set_user_status's self-deactivation block -- prevents
+        # an hr_admin from accidentally locking themselves out with no one
+        # else around to grant it back.
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "cannot revoke your own role")
+
+    owner = (await session.execute(
+        text("select 1 from profiles where id = :pid and company_id = :cid"),
+        {"pid": profile_id, "cid": company_id},
+    )).first()
+    if owner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found in this tenant")
+
+    result = await session.execute(text(
+        "delete from user_roles where profile_id = :pid and company_id = :cid "
+        "and role_id = (select id from roles where code = :code)"
+    ), {"pid": profile_id, "cid": company_id, "code": role_code})
+    if result.rowcount == 0:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"user does not have role: {role_code}")
+
+    await write_audit(
+        session, company_id=company_id, actor_id=actor_id,
+        action="role_revoked", entity_type="profiles", entity_id=profile_id,
+        before={"role": role_code},
+    )
+    return {"user_id": profile_id, "role": role_code}
+
+
 async def set_user_status(
     session: AsyncSession, actor_id: str, company_id: str, profile_id: str, active: bool,
 ) -> dict:

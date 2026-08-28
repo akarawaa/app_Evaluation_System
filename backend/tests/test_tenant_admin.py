@@ -113,3 +113,66 @@ async def test_invite_user_cross_tenant_employee_rejected(api, world):
         "role": "manager", "employee_id": bob["id"],
     })
     assert r.status_code == 400
+
+
+# ── revoke_role (hr_admin self-service, /api/users/{profile_id}/roles/{code}) ──
+# For a department transfer: pull one role off an existing account without
+# banning the whole login (contrast with set_user_status, tested elsewhere).
+
+async def test_hr_admin_revokes_a_role_login_still_works(api, world):
+    r = await api.delete(f"/api/users/{world['emp_uid']}/roles/employee", headers=auth(world["A"]["token"]))
+    assert r.status_code == 200, r.text
+    assert r.json() == {"user_id": world["emp_uid"], "role": "employee"}
+
+    detail = (await api.get(f"/api/admin/tenants/{world['A']['company_id']}", headers=auth(world["super_token"]))).json()
+    target = next(u for u in detail["users"] if u["id"] == world["emp_uid"])
+    assert target["roles"] == []
+    assert target["active"] is True  # login itself untouched -- only the role row is gone
+
+    # The banned-login path (set_user_status) is what actually blocks access;
+    # revoking a role alone doesn't ban anything, so /me still succeeds (the
+    # JWT's roles claim is only refreshed on next login/token-refresh, per
+    # the auth hook -- app.list_company_users() above is the live source of
+    # truth in the meantime, already asserted empty).
+    me = await api.get("/api/me", headers=auth(world["emp_token"]))
+    assert me.status_code == 200
+
+
+async def test_revoke_role_requires_hr_admin(api, world):
+    r = await api.delete(f"/api/users/{world['emp_uid']}/roles/employee", headers=auth(world["emp_token"]))
+    assert r.status_code == 403
+
+
+async def test_revoke_role_rejects_invalid_role_code(api, world):
+    r = await api.delete(f"/api/users/{world['emp_uid']}/roles/bogus", headers=auth(world["A"]["token"]))
+    assert r.status_code == 400
+
+    # super_admin is never grantable/revocable through this tenant-scoped API.
+    r = await api.delete(f"/api/users/{world['emp_uid']}/roles/super_admin", headers=auth(world["A"]["token"]))
+    assert r.status_code == 400
+
+
+async def test_revoke_role_404_when_user_lacks_that_role(api, world):
+    r = await api.delete(f"/api/users/{world['emp_uid']}/roles/hr_admin", headers=auth(world["A"]["token"]))
+    assert r.status_code == 404
+
+
+async def test_hr_admin_cannot_revoke_own_role(api, world):
+    r = await api.delete(f"/api/users/{world['A']['uid']}/roles/hr_admin", headers=auth(world["A"]["token"]))
+    assert r.status_code == 400
+
+
+async def test_revoke_role_is_tenant_isolated(api, world):
+    # hr_admin of tenant A's own company_id scopes the lookup (they can't
+    # pass company_id themselves -- _resolve_company would 403 that) -- tenant
+    # B's profile_id simply isn't found under tenant A's company_id.
+    r = await api.delete(f"/api/users/{world['B']['uid']}/roles/hr_admin", headers=auth(world["A"]["token"]))
+    assert r.status_code == 404
+
+
+async def test_super_admin_revokes_role_via_company_id(api, world):
+    r = await api.delete(
+        f"/api/users/{world['emp_uid']}/roles/employee?company_id={world['A']['company_id']}",
+        headers=auth(world["super_token"]),
+    )
+    assert r.status_code == 200, r.text

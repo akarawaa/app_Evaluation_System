@@ -283,6 +283,18 @@ async def set_user_status(
     return await tenant_admin_svc.set_user_status(session, user.id, target_company, profile_id, payload.active)
 
 
+@router.delete("/users/{profile_id}/roles/{role_code}")
+async def revoke_user_role(
+    profile_id: str,
+    role_code: str,
+    company_id: Optional[str] = Query(default=None),
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    target_company = _resolve_company(user, company_id) or user.company_id
+    return await tenant_admin_svc.revoke_role(session, user.id, target_company, profile_id, role_code)
+
+
 @router.patch("/users/{profile_id}/employee")
 async def link_user_employee(
     profile_id: str,
