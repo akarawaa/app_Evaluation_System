@@ -5,7 +5,7 @@
 **อัปเดตล่าสุด:** 2026-08-28
 **Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
 **สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** + **ปิดใช้งานบัญชี login รายคน** + **สร้างใบประเมิน: แก้บั๊ก template ข้ามบริษัท + company_id ผิด** + **แก้ label "ระดับ" กำกวม** + **แก้ AppHeader ล้นจอมือถือ** + **แก้วรรณยุกต์ซ้อนสระเพี้ยนใน PDF** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
-**ล่าสุด (ยังไม่ deploy):** **ถอด role เดียวออกโดยไม่ปิดทั้งบัญชี** (ใช้ร่วมกับ `app_leave_approve` เพราะ user_roles เป็นตารางกลาง) — เสร็จ+พิสูจน์ local แล้ว, pytest 131/131, รอผู้ใช้สั่ง deploy
+**ล่าสุด:** **ถอด role เดียวออกโดยไม่ปิดทั้งบัญชี** (ใช้ร่วมกับ `app_leave_approve` เพราะ user_roles เป็นตารางกลาง) — เสร็จ+พิสูจน์ local แล้ว, pytest 131/131, **deploy ขึ้น production แล้ว** (commit `e873540`, ยืนยัน route จริงบน `e-appraisal-api.onrender.com` ตอบ 401 ไม่ใช่ 404 หลัง push)
 
 ---
 
@@ -191,6 +191,7 @@
   - pytest +7 เคส (`test_tenant_admin.py`): revoke สำเร็จ+login ยังใช้ได้ (ผ่าน `app.list_company_users` แหล่งความจริง สด — ตัด JWT roles claim ทิ้งเพราะ refresh แค่ตอน login/token-refresh ใหม่), non-hr_admin โดน 403, role_code ผิด/เป็น `super_admin` โดน 400, ถอด role ที่ไม่มีอยู่โดน 404, ถอด role ตัวเองโดน 400, tenant isolation, super_admin ถอดผ่าน `company_id` ได้ — รวม **131/131**
   - พิสูจน์จริงผ่าน browser (login demo-leave/hr_admin จริงที่ `app_Evaluation_System` — บริษัท "Platform" ที่ใช้ร่วมกับข้อมูลทดสอบของ `app_leave_approve`): ถอด `dept_manager` ออกจาก demo-mgr เหลือแค่ `hr_admin` จริง → คืนค่าเดิมกลับหลังพิสูจน์เสร็จ (ไม่ทิ้งผลข้างเคียงกับข้อมูลทดสอบที่ใช้ร่วมกัน)
   - **ไม่ทำในรอบนี้ตามที่ผู้ใช้ขอ ("เพิ่มปุ่มถอด role อย่างเดียวก่อน")**: ยังไม่มีปุ่ม "เปลี่ยน role" (ถอด+grant ในคลิกเดียว), ยังไม่มี guard กัน "ถอดจนบริษัทไม่เหลือ hr_admin เลย" (ไม่มี convention เดิมรองรับ, ไม่ใช่ scope ที่ขอ)
+  - **Deploy ขึ้น production แล้ว (2026-08-28)**: `git push origin master` (commit `e873540`) → Render (backend) + Vercel (frontend) auto-deploy ผ่าน GitHub integration ตามที่ตั้งไว้ใน DEPLOYMENT_PILOT.md — ยืนยันหลัง push: `GET /openapi.json` มี path `/api/users/{profile_id}/roles/{role_code}` จริง, ยิง `DELETE` ตรงไปที่ endpoint จริงบน `https://e-appraisal-api.onrender.com` ได้ 401 (ต้อง auth ตามคาด ไม่ใช่ 404) → build เสร็จและ deploy จริงแล้ว, ไม่ได้ทดสอบ end-to-end เต็มรูปแบบบน production (ไม่มี credential จริง) — ทดสอบเต็มรูปแบบทำแล้วเฉพาะ local
 
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
