@@ -19,12 +19,12 @@ supabase
 # Shared HR-suite backend mechanism (PLATFORM_ARCHITECTURE.md §12). Evaluate
 # uses only the GoTrue-admin + Brevo-email parts, via thin shims at
 # app/services/{auth_admin,email}.py.
-# Local dev/test can instead use an editable checkout:
-#   pip install -e ../../platform-core/py
-# NOTE: hr-platform-core is a PRIVATE repo. Render's build needs read access
-# -- either make the repo public, or set GITHUB_TOKEN in the service env and
-# change the URL to  git+https://$GITHUB_TOKEN@github.com/...  (§12.2).
-hr-platform-core @ git+https://github.com/akarawaa/hr-platform-core.git@v0.1.0#subdirectory=py
+# Vendored as a git submodule at backend/vendor/hr-platform-core, pinned to
+# tag v0.1.0 (§12.2: submodule keeps the repo private with no PAT; Render
+# clones it via its own GitHub access).
+#   dev: pip install -e ./vendor/hr-platform-core/py  (or ../../platform-core/py)
+#   fresh clone: git submodule update --init
+./vendor/hr-platform-core/py
 
 # Auth / JWT verification (pyjwt is the only one actually imported —
 # app/core/security.py verifies via JWKS/ES256 with it)
