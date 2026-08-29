@@ -26,15 +26,14 @@ services:
         value: ""
       - key: CORS_ORIGINS
         sync: false
-      # SMTP for notices we compose ourselves (password-changed today; the
-      # deferred employee-acknowledgement email phase reuses this account).
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
+      # Brevo transactional email API for notices we compose ourselves
+      # (password-changed today; the deferred employee-acknowledgement email
+      # phase reuses this account). Was SMTP -- switched after Render was
+      # found to block all outbound SMTP at the network level (see
+      # services/email.py).
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: MAIL_FROM_NAME
+        value: "ฝ่ายบุคคล"

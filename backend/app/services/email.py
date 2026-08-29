@@ -1,49 +1,57 @@
 """Transactional emails we compose ourselves (password-changed notice today;
-the deferred employee-acknowledgement phase reuses this same SMTP account
-later). Password *recovery* itself is sent by Supabase Auth directly, not
-through here -- this is only for notices where we control the copy.
+the deferred employee-acknowledgement phase reuses this same account later).
+Password *recovery* itself is sent by Supabase Auth directly, not through
+here -- this is only for notices where we control the copy.
 
-smtplib is blocking; every call runs in a thread so it never stalls the
-event loop other requests are sharing.
+Sent via Brevo's transactional email HTTP API
+(https://api.brevo.com/v3/smtp/email), NOT smtplib. This app originally used
+SMTP, but a real production incident on the sibling app (app_leave_approve,
+2026-08-29 -- same Render hosting, same shared Gmail account) found that
+Render blocks ALL outbound SMTP at the network level: every send failed with
+`OSError: [Errno 101] Network is unreachable` connecting to port 587,
+regardless of provider or credentials. Brevo's API is plain HTTPS (same as
+every other external call this app already makes), so it isn't affected.
+
+`send_email` never raises -- a failed notice must never fail the action that
+triggered it (here: a password change that already succeeded in Supabase
+Auth before this is ever called).
 """
-import asyncio
-import smtplib
-import ssl
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
+import httpx
 import structlog
 
 from app.core.config import get_settings
 
 logger = structlog.get_logger()
 
-
-def _send_sync(to: str, subject: str, html_body: str) -> None:
-    settings = get_settings()
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = settings.mail_from or settings.smtp_user
-    msg["To"] = to
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
-        server.starttls(context=context)
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(msg["From"], [to], msg.as_string())
+_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 async def send_email(to: str, subject: str, html_body: str) -> None:
     settings = get_settings()
-    if not settings.smtp_configured:
+    if not settings.brevo_configured:
         # Never block the caller's action (e.g. a password change already
         # succeeded in Supabase Auth) on our own notice email being unset up.
-        logger.warning("smtp_not_configured", to=to, subject=subject)
+        logger.warning("brevo_not_configured", to=to, subject=subject)
         return
+
+    payload = {
+        "sender": {"email": settings.mail_from, "name": settings.mail_from_name},
+        "to": [{"email": to}],
+        "subject": subject,
+        "htmlContent": html_body,
+    }
+    headers = {
+        "api-key": settings.brevo_api_key,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
     try:
-        await asyncio.to_thread(_send_sync, to, subject, html_body)
-    except Exception:  # noqa: BLE001 -- a failed notice must not fail the request
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(_SEND_URL, headers=headers, json=payload)
+        if resp.status_code >= 400:
+            logger.error("email_send_rejected", to=to, subject=subject,
+                         status=resp.status_code, body=resp.text[:500])
+    except httpx.RequestError:  # noqa: BLE001 -- a failed notice must not fail the request
         logger.exception("email_send_failed", to=to, subject=subject)
 
 

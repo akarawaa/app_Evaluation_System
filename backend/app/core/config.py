@@ -18,19 +18,25 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
-    # SMTP: used for our own transactional emails (password-changed notice
-    # today; the deferred employee-acknowledgement email phase reuses this
-    # same account later). Password recovery itself is sent by Supabase Auth,
-    # not us -- these settings are only for notices we compose ourselves.
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
+    # Brevo transactional email API: our own notices (password-changed today;
+    # the deferred employee-acknowledgement email phase reuses this same
+    # account later). Password recovery itself is sent by Supabase Auth, not
+    # us -- these settings are only for notices we compose ourselves.
+    #
+    # Was SMTP (smtplib -> smtp.gmail.com:587); switched after a real
+    # production incident on the sibling app (app_leave_approve, 2026-08-29,
+    # same Render hosting, same shared Gmail account) found that Render
+    # blocks ALL outbound SMTP at the network level -- every send failed
+    # with `OSError: [Errno 101] Network is unreachable` regardless of
+    # provider or credentials. Brevo's HTTP API (https://api.brevo.com) is
+    # plain HTTPS, so it isn't affected.
+    brevo_api_key: str = ""
     mail_from: str = ""
+    mail_from_name: str = "ฝ่ายบุคคล"
 
     @property
-    def smtp_configured(self) -> bool:
-        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+    def brevo_configured(self) -> bool:
+        return bool(self.brevo_api_key and self.mail_from)
 
     @property
     def cors_origin_list(self) -> list[str]:
