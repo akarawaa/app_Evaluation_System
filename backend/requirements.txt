@@ -16,6 +16,16 @@ greenlet==3.1.1 ; python_version < "3.10"
 # Supabase (used for Auth admin tasks only, e.g. inviting/creating users)
 supabase
 
+# Shared HR-suite backend mechanism (PLATFORM_ARCHITECTURE.md §12). Evaluate
+# uses only the GoTrue-admin + Brevo-email parts, via thin shims at
+# app/services/{auth_admin,email}.py.
+# Local dev/test can instead use an editable checkout:
+#   pip install -e ../../platform-core/py
+# NOTE: hr-platform-core is a PRIVATE repo. Render's build needs read access
+# -- either make the repo public, or set GITHUB_TOKEN in the service env and
+# change the URL to  git+https://$GITHUB_TOKEN@github.com/...  (§12.2).
+hr-platform-core @ git+https://github.com/akarawaa/hr-platform-core.git@v0.1.0#subdirectory=py
+
 # Auth / JWT verification (pyjwt is the only one actually imported —
 # app/core/security.py verifies via JWKS/ES256 with it)
 pyjwt[crypto]

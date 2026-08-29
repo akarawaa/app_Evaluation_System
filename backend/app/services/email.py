@@ -1,58 +1,31 @@
-"""Transactional emails we compose ourselves (password-changed notice today;
-the deferred employee-acknowledgement phase reuses this same account later).
-Password *recovery* itself is sent by Supabase Auth directly, not through
-here -- this is only for notices where we control the copy.
+"""App shim over `hr_platform_core.email` (platform-core/py, PLATFORM_ARCHITECTURE.md §12).
 
-Sent via Brevo's transactional email HTTP API
-(https://api.brevo.com/v3/smtp/email), NOT smtplib. This app originally used
-SMTP, but a real production incident on the sibling app (app_leave_approve,
-2026-08-29 -- same Render hosting, same shared Gmail account) found that
-Render blocks ALL outbound SMTP at the network level: every send failed with
-`OSError: [Errno 101] Network is unreachable` connecting to port 587,
-regardless of provider or credentials. Brevo's API is plain HTTPS (same as
-every other external call this app already makes), so it isn't affected.
+The Brevo transactional-email mechanism lives in the shared package now.
+`send_email(to, subject, html_body)` keeps its historical signature and maps
+this app's `get_settings()` onto the package's explicit args.
+`password_changed_email` is Evaluate-specific copy and stays here; the
+deferred employee-acknowledgement phase adds its own bodies here too.
 
-`send_email` never raises -- a failed notice must never fail the action that
-triggered it (here: a password change that already succeeded in Supabase
-Auth before this is ever called).
+Password *recovery* itself is still sent by Supabase Auth directly, not
+through here -- this is only for notices where we control the copy.
 """
-import httpx
-import structlog
+from hr_platform_core.email import send_email as _send_email
 
 from app.core.config import get_settings
 
-logger = structlog.get_logger()
-
-_SEND_URL = "https://api.brevo.com/v3/smtp/email"
+__all__ = ["send_email", "password_changed_email"]
 
 
 async def send_email(to: str, subject: str, html_body: str) -> None:
     settings = get_settings()
-    if not settings.brevo_configured:
-        # Never block the caller's action (e.g. a password change already
-        # succeeded in Supabase Auth) on our own notice email being unset up.
-        logger.warning("brevo_not_configured", to=to, subject=subject)
-        return
-
-    payload = {
-        "sender": {"email": settings.mail_from, "name": settings.mail_from_name},
-        "to": [{"email": to}],
-        "subject": subject,
-        "htmlContent": html_body,
-    }
-    headers = {
-        "api-key": settings.brevo_api_key,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(_SEND_URL, headers=headers, json=payload)
-        if resp.status_code >= 400:
-            logger.error("email_send_rejected", to=to, subject=subject,
-                         status=resp.status_code, body=resp.text[:500])
-    except httpx.RequestError:  # noqa: BLE001 -- a failed notice must not fail the request
-        logger.exception("email_send_failed", to=to, subject=subject)
+    await _send_email(
+        to,
+        subject,
+        html_body,
+        api_key=settings.brevo_api_key,
+        mail_from=settings.mail_from,
+        mail_from_name=settings.mail_from_name,
+    )
 
 
 def password_changed_email(display_name: str | None) -> tuple[str, str]:
