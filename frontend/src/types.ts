@@ -28,6 +28,7 @@ export type Employee = {
   emp_code: string
   full_name: string
   position: string | null
+  email: string | null
   level: string
   status: string
   branch_id: string | null

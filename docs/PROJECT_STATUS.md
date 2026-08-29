@@ -193,6 +193,23 @@
   - **ไม่ทำในรอบนี้ตามที่ผู้ใช้ขอ ("เพิ่มปุ่มถอด role อย่างเดียวก่อน")**: ยังไม่มีปุ่ม "เปลี่ยน role" (ถอด+grant ในคลิกเดียว), ยังไม่มี guard กัน "ถอดจนบริษัทไม่เหลือ hr_admin เลย" (ไม่มี convention เดิมรองรับ, ไม่ใช่ scope ที่ขอ)
   - **Deploy ขึ้น production แล้ว (2026-08-28)**: `git push origin master` (commit `e873540`) → Render (backend) + Vercel (frontend) auto-deploy ผ่าน GitHub integration ตามที่ตั้งไว้ใน DEPLOYMENT_PILOT.md — ยืนยันหลัง push: `GET /openapi.json` มี path `/api/users/{profile_id}/roles/{role_code}` จริง, ยิง `DELETE` ตรงไปที่ endpoint จริงบน `https://e-appraisal-api.onrender.com` ได้ 401 (ต้อง auth ตามคาด ไม่ใช่ 404) → build เสร็จและ deploy จริงแล้ว, ไม่ได้ทดสอบ end-to-end เต็มรูปแบบบน production (ไม่มี credential จริง) — ทดสอบเต็มรูปแบบทำแล้วเฉพาะ local
 
+- **เพิ่มช่องกรอกอีเมลในฟอร์มพนักงาน (2026-08-29)** — มาจากปัญหาจริงตอนพี่ทดสอบ `app_leave_approve`'s P5 บน
+  production: `employees.email` (คอลัมน์เดิมจาก migration `0018_employee_acknowledgement.sql`) **ไม่มี UI
+  ให้กรอกได้เลยสักที่** (ฟอร์มเดี่ยวไม่มีช่องนี้, CSV import ก็ไม่มีคอลัมน์นี้) ทำให้ path ขอรหัสผูกบัญชี LINE
+  ทางอีเมลใช้งานจริงไม่ได้เลยแม้ตั้ง SMTP ถูกแล้ว เพราะไม่มีทางตั้งอีเมลให้พนักงานได้ตั้งแต่แรก →
+  - `EmployeeCreate`/`EmployeeUpdate`/`EmployeeOut` เพิ่ม `email: Optional[str]` (plain `str` ไม่ใช้
+    `EmailStr` ให้ตรง convention เดิมของ field email อื่นในโค้ดนี้ เช่น `InviteUserIn`)
+  - `services/employees.py`: `_LIST_SQL` เพิ่ม `e.email`, `create_employee` insert คอลัมน์นี้เพิ่ม,
+    `update_employee`'s dynamic column whitelist เพิ่ม `"email"` เข้าไป
+  - `services/employee_import.py`: CSV `HEADERS` เพิ่มคอลัมน์ "อีเมล" (อยู่ถัดจาก "ตำแหน่ง") ทั้ง template
+    และ upsert logic — bulk import ตอน onboard พนักงานจำนวนมากตั้งอีเมลพร้อมกันได้เลยไม่ต้องแก้ทีละคน
+  - Frontend: `People.tsx` ฟอร์ม "เพิ่มพนักงาน"/"แก้ไขพนักงาน" เพิ่มช่อง "อีเมล (รับสลิป/ยืนยันตัวตน)"
+  - pytest: แก้ `test_employee_import.py` ทุกเคสให้ตรง header ใหม่ (เพิ่มคอลัมน์กลาง CSV กระทบทุก row string)
+    + เพิ่ม assertion ยืนยันว่า import ตั้ง/อัปเดตอีเมลถูกต้องจริง — รวม **131/131**
+  - พิสูจน์สดผ่าน browser จริง: login HR → แก้ไข DEMO001 → กรอกอีเมล → บันทึก → เช็ค DB ตรงว่าค่าอัปเดตจริง
+    (ลบข้อมูลทดสอบออกหลังพิสูจน์เสร็จ)
+  - ไม่ใช่ schema/migration ใหม่ (คอลัมน์มีอยู่แล้ว) แค่เปิดช่องให้ตั้งค่าได้จาก UI/CSV เป็นครั้งแรก
+
 ## 🖥️ วิธีรัน local (สำหรับ session ถัดไป)
 ```
 npx supabase start          # Postgres @54322, API @54321, Studio @54323

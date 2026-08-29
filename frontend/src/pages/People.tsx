@@ -6,7 +6,7 @@ import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, EvalL
 import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL, STATUS_LABEL } from '../types'
 
 const emptyForm = {
-  emp_code: '', full_name: '', position: '', level: 'operational',
+  emp_code: '', full_name: '', position: '', email: '', level: 'operational',
   branch_id: '', supervisor_id: '', manager_id: '',
 }
 
@@ -94,6 +94,7 @@ export default function People() {
     setEditingId(emp.id)
     setForm({
       emp_code: emp.emp_code, full_name: emp.full_name, position: emp.position ?? '',
+      email: emp.email ?? '',
       level: emp.level, branch_id: emp.branch_id ?? '', supervisor_id: emp.supervisor_id ?? '',
       manager_id: emp.manager_id ?? '',
     })
@@ -107,6 +108,7 @@ export default function People() {
       emp_code: form.emp_code.trim(),
       full_name: form.full_name.trim(),
       position: form.position.trim() || null,
+      email: form.email.trim() || null,
       level: form.level,
       branch_id: form.branch_id || null,
       supervisor_id: form.supervisor_id || null,
@@ -460,6 +462,13 @@ export default function People() {
               <span className="block text-slate-500 mb-0.5">ตำแหน่ง</span>
               <input className="border rounded px-2 py-1 w-full" value={form.position}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} />
+            </label>
+            <label>
+              <span className="block text-slate-500 mb-0.5">
+                อีเมล (รับสลิป/ยืนยันตัวตน)
+              </span>
+              <input type="email" className="border rounded px-2 py-1 w-full" value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
             </label>
             <label>
               <span className="block text-slate-500 mb-0.5">ประเภทแบบประเมิน</span>

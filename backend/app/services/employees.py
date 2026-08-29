@@ -19,7 +19,7 @@ from app.core.security import CurrentUser
 from app.services.audit import write_audit
 
 _LIST_SQL = """
-select e.id, e.emp_code, e.full_name, e.position, e.level, e.status,
+select e.id, e.emp_code, e.full_name, e.position, e.email, e.level, e.status,
        e.branch_id, b.name as branch_name,
        e.supervisor_id, sup.full_name as supervisor_name,
        e.manager_id, mgr.full_name as manager_name
@@ -74,8 +74,8 @@ async def create_employee(session: AsyncSession, user: CurrentUser, payload, com
     )
     row = (await session.execute(text(
         "insert into employees "
-        "(company_id, branch_id, emp_code, full_name, position, level, supervisor_id, manager_id) "
-        "values (:cid, :branch_id, :emp_code, :full_name, :position, :level, :sup, :mgr) "
+        "(company_id, branch_id, emp_code, full_name, position, email, level, supervisor_id, manager_id) "
+        "values (:cid, :branch_id, :emp_code, :full_name, :position, :email, :level, :sup, :mgr) "
         "returning id"
     ), {
         "cid": cid,
@@ -83,6 +83,7 @@ async def create_employee(session: AsyncSession, user: CurrentUser, payload, com
         "emp_code": payload.emp_code,
         "full_name": payload.full_name,
         "position": payload.position,
+        "email": payload.email,
         "level": payload.level,
         "sup": str(payload.supervisor_id) if payload.supervisor_id else None,
         "mgr": str(payload.manager_id) if payload.manager_id else None,
@@ -119,7 +120,7 @@ async def update_employee(
     )
 
     set_clauses, params = [], {"id": employee_id}
-    for col in ("branch_id", "emp_code", "full_name", "position", "level",
+    for col in ("branch_id", "emp_code", "full_name", "position", "email", "level",
                 "supervisor_id", "manager_id", "status"):
         if col in fields:
             value = fields[col]

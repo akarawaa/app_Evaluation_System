@@ -3,7 +3,7 @@ import uuid
 
 from conftest import auth
 
-HEADER = "รหัสพนักงาน,ชื่อ-นามสกุล,ตำแหน่ง,ระดับ,สาขา,รหัสหัวหน้างาน,รหัสผจก.แผนก,สถานะ"
+HEADER = "รหัสพนักงาน,ชื่อ-นามสกุล,ตำแหน่ง,อีเมล,ระดับ,สาขา,รหัสหัวหน้างาน,รหัสผจก.แผนก,สถานะ"
 
 
 def _csv(*rows: str) -> bytes:
@@ -27,8 +27,8 @@ async def test_import_creates_links_and_branch(api, world):
     emp = f"EMP{uuid.uuid4().hex[:5]}"
     branch = f"สาขา-{uuid.uuid4().hex[:5]}"
     csv_bytes = _csv(
-        f"{sup},หัวหน้าทดสอบ,ผู้จัดการ,หัวหน้างาน,{branch},,,ทำงานอยู่",
-        f"{emp},ลูกน้องทดสอบ,พนักงาน,พนักงานปฏิบัติการ,{branch},{sup},,ทำงานอยู่",
+        f"{sup},หัวหน้าทดสอบ,ผู้จัดการ,{sup.lower()}@example.com,หัวหน้างาน,{branch},,,ทำงานอยู่",
+        f"{emp},ลูกน้องทดสอบ,พนักงาน,,พนักงานปฏิบัติการ,{branch},{sup},,ทำงานอยู่",
     )
     r = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     assert r.status_code == 200, r.text
@@ -43,16 +43,19 @@ async def test_import_creates_links_and_branch(api, world):
     worker = next(e for e in employees if e["emp_code"] == emp)
     assert worker["supervisor_name"] == "หัวหน้าทดสอบ"
     assert worker["branch_name"] == branch
+    supervisor = next(e for e in employees if e["emp_code"] == sup)
+    assert supervisor["email"] == f"{sup.lower()}@example.com"
+    assert worker["email"] is None
 
 
 async def test_import_is_idempotent(api, world):
     code = f"IDM{uuid.uuid4().hex[:5]}"
-    csv_bytes = _csv(f"{code},ชื่อเดิม,,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
+    csv_bytes = _csv(f"{code},ชื่อเดิม,,,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
 
     r1 = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     assert r1.json()["created"] == 1
 
-    csv_bytes2 = _csv(f"{code},ชื่อใหม่,,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
+    csv_bytes2 = _csv(f"{code},ชื่อใหม่,,{code.lower()}@example.com,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
     r2 = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes2))
     body2 = r2.json()
     assert body2["created"] == 0
@@ -61,13 +64,14 @@ async def test_import_is_idempotent(api, world):
     employees = (await api.get("/api/employees", headers=auth(world["A"]["token"]))).json()
     row = next(e for e in employees if e["emp_code"] == code)
     assert row["full_name"] == "ชื่อใหม่"
+    assert row["email"] == f"{code.lower()}@example.com"
 
 
 async def test_import_partial_failure_reports_row_and_continues(api, world):
     good = f"OK{uuid.uuid4().hex[:5]}"
     csv_bytes = _csv(
-        f"{good},คนที่ผ่าน,,พนักงานปฏิบัติการ,,,,ทำงานอยู่",
-        "BAD1,คนที่ไม่ผ่าน,,ระดับผิด,,,,ทำงานอยู่",
+        f"{good},คนที่ผ่าน,,,พนักงานปฏิบัติการ,,,,ทำงานอยู่",
+        "BAD1,คนที่ไม่ผ่าน,,,ระดับผิด,,,,ทำงานอยู่",
     )
     r = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     body = r.json()
@@ -83,7 +87,7 @@ async def test_import_partial_failure_reports_row_and_continues(api, world):
 
 async def test_import_self_reference_rejected(api, world):
     code = f"SELF{uuid.uuid4().hex[:5]}"
-    csv_bytes = _csv(f"{code},วนซ้ำตัวเอง,,พนักงานปฏิบัติการ,,{code},,ทำงานอยู่")
+    csv_bytes = _csv(f"{code},วนซ้ำตัวเอง,,,พนักงานปฏิบัติการ,,{code},,ทำงานอยู่")
     r = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     body = r.json()
     assert body["created"] == 1
@@ -93,7 +97,7 @@ async def test_import_self_reference_rejected(api, world):
 
 async def test_import_unresolved_supervisor_code_reported(api, world):
     code = f"ORPH{uuid.uuid4().hex[:5]}"
-    csv_bytes = _csv(f"{code},ไม่มีหัวหน้าจริง,,พนักงานปฏิบัติการ,,NOPE999,,ทำงานอยู่")
+    csv_bytes = _csv(f"{code},ไม่มีหัวหน้าจริง,,,พนักงานปฏิบัติการ,,NOPE999,,ทำงานอยู่")
     r = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     body = r.json()
     assert body["created"] == 1
@@ -108,7 +112,7 @@ async def test_import_wrong_header_rejected(api, world):
 
 
 async def test_import_requires_hr_admin(api, world):
-    csv_bytes = _csv(f"X{uuid.uuid4().hex[:5]},ทดสอบ,,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
+    csv_bytes = _csv(f"X{uuid.uuid4().hex[:5]},ทดสอบ,,,พนักงานปฏิบัติการ,,,,ทำงานอยู่")
     r = await api.post("/api/employees/import", headers=auth(world["emp_token"]), files=_upload(csv_bytes))
     assert r.status_code == 403
 
@@ -120,7 +124,7 @@ async def test_import_is_tenant_scoped_for_links(api, world):
     bob = next(e for e in (await api.get("/api/employees", headers=auth(world["B"]["token"]))).json()
               if e["full_name"] == "Bob B")
     code = f"XT{uuid.uuid4().hex[:5]}"
-    csv_bytes = _csv(f"{code},พนักงานเอ,,พนักงานปฏิบัติการ,,{bob['emp_code']},,ทำงานอยู่")
+    csv_bytes = _csv(f"{code},พนักงานเอ,,,พนักงานปฏิบัติการ,,{bob['emp_code']},,ทำงานอยู่")
     r = await api.post("/api/employees/import", headers=auth(world["A"]["token"]), files=_upload(csv_bytes))
     body = r.json()
     assert body["linked"] == 0

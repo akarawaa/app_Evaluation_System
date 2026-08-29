@@ -37,7 +37,7 @@ from app.core.security import CurrentUser
 from app.services.audit import write_audit
 
 HEADERS = [
-    "รหัสพนักงาน", "ชื่อ-นามสกุล", "ตำแหน่ง", "ระดับ",
+    "รหัสพนักงาน", "ชื่อ-นามสกุล", "ตำแหน่ง", "อีเมล", "ระดับ",
     "สาขา", "รหัสหัวหน้างาน", "รหัสผจก.แผนก", "สถานะ",
 ]
 
@@ -57,8 +57,8 @@ def build_template_csv() -> bytes:
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(HEADERS)
-    writer.writerow(["SUP001", "สมหมาย ใจดี", "ผู้จัดการแผนกขาย", "หัวหน้างาน", "สำนักงานใหญ่", "", "", "ทำงานอยู่"])
-    writer.writerow(["EMP001", "สมชาย รักงาน", "พนักงานขาย", "พนักงานปฏิบัติการ", "สำนักงานใหญ่", "SUP001", "", "ทำงานอยู่"])
+    writer.writerow(["SUP001", "สมหมาย ใจดี", "ผู้จัดการแผนกขาย", "supervisor@example.com", "หัวหน้างาน", "สำนักงานใหญ่", "", "", "ทำงานอยู่"])
+    writer.writerow(["EMP001", "สมชาย รักงาน", "พนักงานขาย", "emp001@example.com", "พนักงานปฏิบัติการ", "สำนักงานใหญ่", "SUP001", "", "ทำงานอยู่"])
     # UTF-8 BOM so Thai text opens correctly in Excel, not just text editors.
     return b"\xef\xbb\xbf" + buf.getvalue().encode("utf-8")
 
@@ -137,15 +137,17 @@ async def import_employees(session: AsyncSession, user: CurrentUser, raw: bytes)
                     branch_id = await _get_or_create_branch(session, user.company_id, branch_cache, branch_name)
 
                 result = (await session.execute(text(
-                    "insert into employees (company_id, emp_code, full_name, position, level, branch_id, status) "
-                    "values (:cid, :code, :name, :pos, :level, :branch, :status) "
+                    "insert into employees (company_id, emp_code, full_name, position, email, level, branch_id, status) "
+                    "values (:cid, :code, :name, :pos, :email, :level, :branch, :status) "
                     "on conflict (company_id, emp_code) do update set "
                     "  full_name = excluded.full_name, position = excluded.position, "
+                    "  email = excluded.email, "
                     "  level = excluded.level, branch_id = excluded.branch_id, status = excluded.status "
                     "returning id, (xmax = 0) as inserted"
                 ), {
                     "cid": user.company_id, "code": emp_code, "name": full_name,
-                    "pos": _get(row, "ตำแหน่ง") or None, "level": _LEVEL_MAP[level_raw],
+                    "pos": _get(row, "ตำแหน่ง") or None, "email": _get(row, "อีเมล") or None,
+                    "level": _LEVEL_MAP[level_raw],
                     "branch": str(branch_id) if branch_id else None, "status": _STATUS_MAP[status_raw],
                 })).mappings().one()
         except Exception as exc:  # noqa: BLE001 — surfaced per-row, not fatal to the batch
