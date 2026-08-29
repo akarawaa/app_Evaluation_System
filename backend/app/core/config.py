@@ -38,6 +38,17 @@ class Settings(BaseSettings):
     def brevo_configured(self) -> bool:
         return bool(self.brevo_api_key and self.mail_from)
 
+    # Used to build links in the daily digest email (services/notifications.py)
+    # back into the evaluation the recipient needs to act on.
+    frontend_url: str = "https://app-evaluation-system.vercel.app"
+
+    # Shared secret an external cron (e.g. cron-job.org, same idea as the
+    # UptimeRobot keep-alive ping already documented for cold starts) must
+    # send as `X-Cron-Secret` to trigger POST /api/notifications/daily-digest.
+    # Left unset by default so the endpoint fails closed rather than being
+    # silently callable by anyone.
+    cron_secret: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

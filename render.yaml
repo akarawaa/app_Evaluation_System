@@ -37,3 +37,11 @@ services:
         sync: false
       - key: MAIL_FROM_NAME
         value: "ฝ่ายบุคคล"
+      - key: FRONTEND_URL
+        value: "https://app-evaluation-system.vercel.app"
+      # Daily digest email cron trigger -- see services/notifications.py.
+      # Set up an external scheduler (e.g. cron-job.org, same idea as the
+      # UptimeRobot keep-alive ping) to POST /api/notifications/daily-digest
+      # once a day with header X-Cron-Secret matching this value.
+      - key: CRON_SECRET
+        sync: false

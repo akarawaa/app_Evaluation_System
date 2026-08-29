@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
 from app.api.evaluations import router as evaluations_router
+from app.api.notifications import router as notifications_router
 from app.api.routes import router as api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(admin_router)
 app.include_router(evaluations_router)
+app.include_router(notifications_router)
 
 
 @app.get("/health")

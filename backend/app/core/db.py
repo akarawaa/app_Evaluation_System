@@ -7,6 +7,7 @@ the PostgREST/Supabase path — so a missing WHERE clause can never leak tenants
 """
 import json
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import text
@@ -47,4 +48,21 @@ async def get_tenant_session(
                 if row is None or row[0] != "active":
                     raise HTTPException(status.HTTP_403_FORBIDDEN, "This company's account is suspended")
 
+            yield session
+
+
+@asynccontextmanager
+async def service_session() -> AsyncIterator[AsyncSession]:
+    """Yield a session that stays as the full `postgres` role -- no RLS, no
+    per-tenant scoping. For background/service jobs that must operate across
+    every company in one pass (e.g. services/notifications.py's daily
+    digest), where there is no single tenant JWT to bind a get_tenant_session
+    to.
+
+    Never expose this behind a route that accepts an ordinary user JWT --
+    the caller must be gated some other way first (see
+    api/notifications.py's cron-secret header check, checked *before* this
+    is ever opened)."""
+    async with SessionLocal() as session:
+        async with session.begin():
             yield session
