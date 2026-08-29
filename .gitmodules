@@ -1,0 +1,3 @@
+[submodule "backend/vendor/hr-platform-core"]
+	path = backend/vendor/hr-platform-core
+	url = https://github.com/akarawaa/hr-platform-core.git
