@@ -1,6 +1,6 @@
 # Evaluation Domain Design — Phase 2
 
-> อ้างอิงใบ FMHR07 (`docs/evaluation-form-analysis.md`) + การตัดสินใจ Phase 2
+> อ้างอิงใบ FMHR07 (`docs/ANALYSIS.md`) + การตัดสินใจ Phase 2
 > ทุกตารางยัง **tenant-scoped (`company_id`) + RLS + audit** ตามกติกาเดิม (ดู SECURITY / LOGGING_AND_AUDIT)
 
 ## การตัดสินใจที่ล็อก (Phase 2)

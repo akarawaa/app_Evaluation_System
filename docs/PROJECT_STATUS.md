@@ -3,14 +3,14 @@
 > เอกสารมีชีวิต (living doc) — **อัปเดตทุกครั้งที่จบงาน** เพื่อส่งต่อ session ถัดไป
 
 **อัปเดตล่าสุด:** 2026-08-28
-**Phase ปัจจุบัน:** Phase 1 — Foundation (+ pilot deployment ขึ้น production จริงแล้ว — ดู [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md))
+**Phase ปัจจุบัน:** P1–P7 + P9 เสร็จ, live production — ดู [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) (deploy: [DEPLOYMENT.md](DEPLOYMENT.md))
 **สเต็ปที่กำลังทำ:** Phase 1–3 + admin tooling + role-based UI + read-visibility + BARS anchors + ระบบ attendance + bundle ฟอนต์ OFL + export Excel + หน้า HR ปรับสูตร attendance + หน้าเปรียบเทียบผลประเมิน + อัปเกรด Python 3.9→3.11 + การรับทราบของพนักงานแบบกระดาษ + ย้ายจุดรับทราบเข้าไปในสายอนุมัติ + **ลืมรหัสผ่าน/SMTP** + **นำทาง (nav bar) เดียวทุกหน้า + badge ผู้ใช้ปัจจุบัน/บริษัท/สาขา** + **multi-company account switching** + **frontend cold-start retry** + **super_admin ดูพนักงาน/user แยกตามบริษัท** + **ปิดใช้งานบัญชี login รายคน** + **สร้างใบประเมิน: แก้บั๊ก template ข้ามบริษัท + company_id ผิด** + **แก้ label "ระดับ" กำกวม** + **แก้ AppHeader ล้นจอมือถือ** + **แก้วรรณยุกต์ซ้อนสระเพี้ยนใน PDF** — ครบทุกอย่างนี้ deploy ขึ้น production แล้ว, รอ HR ตรวจ/ปรับถ้อยคำ BARS + ยืนยันสูตร attendance
 **ล่าสุด:** **ถอด role เดียวออกโดยไม่ปิดทั้งบัญชี** (ใช้ร่วมกับ `app_leave_approve` เพราะ user_roles เป็นตารางกลาง) — เสร็จ+พิสูจน์ local แล้ว, pytest 131/131, **deploy ขึ้น production แล้ว** (commit `e873540`, ยืนยัน route จริงบน `e-appraisal-api.onrender.com` ตอบ 401 ไม่ใช่ 404 หลัง push)
 
 ---
 
 ## ✅ ทำไปแล้ว
-- อ่าน/วิเคราะห์ใบประเมินเดิม FMHR07 → `docs/evaluation-form-analysis.md`
+- อ่าน/วิเคราะห์ใบประเมินเดิม FMHR07 → `docs/ANALYSIS.md`
 - วิเคราะห์ช่องโหว่ PROJECT_PLAN.md (multi-tenant) → สะท้อนใน SECURITY.md
 - ตัดสินใจสถาปัตยกรรมหลัก + tooling (ดู "การตัดสินใจที่ล็อกแล้ว")
 - `git init` + commit แรก (เอกสารควบคุมงานครบ)
@@ -155,7 +155,7 @@
   - ผลลัพธ์: `pip-audit` จาก 35 รายการ → **0 known vulnerabilities**
   - พิสูจน์: สร้าง venv ใหม่จาก `requirements.txt` ที่แก้แล้ว รันเซิร์ฟเวอร์จริงขึ้นสำเร็จ (`/docs` 200), รัน pytest เต็มชุด **81/81 ผ่าน** ทั้งบน venv ใหม่ก่อน rename และหลัง rename เป็น `.venv` (กันกรณี path-dependent อะไรพลาด), `npm run build` ฝั่ง frontend ผ่าน (ไม่กระทบเพราะเป็นคนละ stack), ลบ venv เก่า (Python 3.9) ทิ้งหลังยืนยันว่าไม่ต้องใช้แล้ว
 
-- **Pilot deployment ขึ้น production จริง (Supabase Cloud + Render + Vercel) เสร็จ+พิสูจน์** — รายละเอียดครบใน [DEPLOYMENT_PILOT.md](DEPLOYMENT_PILOT.md) รวมปัญหาที่เจอจริงระหว่างทำ (Render ไม่มี field `pythonVersion` ต้องใช้ env var แทน, direct DB connection เป็น IPv6-only ต้องเปลี่ยนไปใช้ Supavisor pooler, username ของ pooler ต้องมี project ref ต่อท้าย) →
+- **Pilot deployment ขึ้น production จริง (Supabase Cloud + Render + Vercel) เสร็จ+พิสูจน์** — รายละเอียดครบใน [DEPLOYMENT.md](DEPLOYMENT.md) รวมปัญหาที่เจอจริงระหว่างทำ (Render ไม่มี field `pythonVersion` ต้องใช้ env var แทน, direct DB connection เป็น IPv6-only ต้องเปลี่ยนไปใช้ Supavisor pooler, username ของ pooler ต้องมี project ref ต่อท้าย) →
   - Production URLs: backend `https://e-appraisal-api.onrender.com`, frontend `https://app-evaluation-system.vercel.app`, Supabase project ref `avznzakoxpjsgmrxjjgs`
   - สร้าง super_admin คนแรกของระบบจริงแล้ว (bootstrap ผ่าน SQL ตรง ๆ เพราะยังไม่มี super_admin คนไหนให้เรียก endpoint ปกติ — วิธีเดียวกับที่ `tests/conftest.py` ทำในเทส) — เก็บ credential ไว้กับผู้ใช้แล้ว ไม่บันทึกในเอกสารนี้
   - **สร้างบริษัททดลอง "บริษัท ทดลอง จำกัด" (`demo-co`) พร้อมข้อมูลตัวอย่างเต็มสาย** ผ่าน API จริง (ไม่ใช่ยัด DB ตรง ๆ) ไว้ demo/ทดสอบ: สายบังคับบัญชา 4 ระดับ (ผจก.แผนก → หัวหน้างาน → พนักงาน 2 คน) มีบัญชีล็อกอินครบทุก role (HR/dept_manager/manager/md), ใบประเมินตัวอย่าง 2 ใบคนละสถานะ (annual ที่ submit แล้วรอผจก.แผนกอนุมัติ, probation checkpoint 30 วันที่ยังเป็นร่างพร้อมให้คะแนนสด) — credential อยู่กับผู้ใช้ ไม่บันทึกในเอกสารนี้เช่นกัน
@@ -191,7 +191,7 @@
   - pytest +7 เคส (`test_tenant_admin.py`): revoke สำเร็จ+login ยังใช้ได้ (ผ่าน `app.list_company_users` แหล่งความจริง สด — ตัด JWT roles claim ทิ้งเพราะ refresh แค่ตอน login/token-refresh ใหม่), non-hr_admin โดน 403, role_code ผิด/เป็น `super_admin` โดน 400, ถอด role ที่ไม่มีอยู่โดน 404, ถอด role ตัวเองโดน 400, tenant isolation, super_admin ถอดผ่าน `company_id` ได้ — รวม **131/131**
   - พิสูจน์จริงผ่าน browser (login demo-leave/hr_admin จริงที่ `app_Evaluation_System` — บริษัท "Platform" ที่ใช้ร่วมกับข้อมูลทดสอบของ `app_leave_approve`): ถอด `dept_manager` ออกจาก demo-mgr เหลือแค่ `hr_admin` จริง → คืนค่าเดิมกลับหลังพิสูจน์เสร็จ (ไม่ทิ้งผลข้างเคียงกับข้อมูลทดสอบที่ใช้ร่วมกัน)
   - **ไม่ทำในรอบนี้ตามที่ผู้ใช้ขอ ("เพิ่มปุ่มถอด role อย่างเดียวก่อน")**: ยังไม่มีปุ่ม "เปลี่ยน role" (ถอด+grant ในคลิกเดียว), ยังไม่มี guard กัน "ถอดจนบริษัทไม่เหลือ hr_admin เลย" (ไม่มี convention เดิมรองรับ, ไม่ใช่ scope ที่ขอ)
-  - **Deploy ขึ้น production แล้ว (2026-08-28)**: `git push origin master` (commit `e873540`) → Render (backend) + Vercel (frontend) auto-deploy ผ่าน GitHub integration ตามที่ตั้งไว้ใน DEPLOYMENT_PILOT.md — ยืนยันหลัง push: `GET /openapi.json` มี path `/api/users/{profile_id}/roles/{role_code}` จริง, ยิง `DELETE` ตรงไปที่ endpoint จริงบน `https://e-appraisal-api.onrender.com` ได้ 401 (ต้อง auth ตามคาด ไม่ใช่ 404) → build เสร็จและ deploy จริงแล้ว, ไม่ได้ทดสอบ end-to-end เต็มรูปแบบบน production (ไม่มี credential จริง) — ทดสอบเต็มรูปแบบทำแล้วเฉพาะ local
+  - **Deploy ขึ้น production แล้ว (2026-08-28)**: `git push origin master` (commit `e873540`) → Render (backend) + Vercel (frontend) auto-deploy ผ่าน GitHub integration ตามที่ตั้งไว้ใน DEPLOYMENT.md — ยืนยันหลัง push: `GET /openapi.json` มี path `/api/users/{profile_id}/roles/{role_code}` จริง, ยิง `DELETE` ตรงไปที่ endpoint จริงบน `https://e-appraisal-api.onrender.com` ได้ 401 (ต้อง auth ตามคาด ไม่ใช่ 404) → build เสร็จและ deploy จริงแล้ว, ไม่ได้ทดสอบ end-to-end เต็มรูปแบบบน production (ไม่มี credential จริง) — ทดสอบเต็มรูปแบบทำแล้วเฉพาะ local
 
 - **เพิ่มช่องกรอกอีเมลในฟอร์มพนักงาน (2026-08-29)** — มาจากปัญหาจริงตอนพี่ทดสอบ `app_leave_approve`'s P5 บน
   production: `employees.email` (คอลัมน์เดิมจาก migration `0018_employee_acknowledgement.sql`) **ไม่มี UI
@@ -316,9 +316,9 @@ npx supabase stop           # ตอนเลิกงาน
 - Criteria scope ต่อ tenant, login scope, role set — ใช้ default ที่เสนอไว้ (แก้ได้)
 
 ## 🧭 จุดอ้างอิงเร็ว
-- แผนละเอียด: `docs/PHASE_1_PLAN.md`
-- schema: `docs/DATABASE_SCHEMA.md`
-- กติกา/DoD: `CLAUDE.md`
+- แผนพัฒนา (เฟส): `docs/DEVELOPMENT_PLAN.md` (แผนเก่ารายสเต็ป: `docs/archive/`)
+- schema: `docs/DATA_MODEL.md`
+- กติกา suite: [`../../platform-core/docs/CONVENTIONS.md`](../../platform-core/docs/CONVENTIONS.md) · เฉพาะแอป: `CLAUDE.md`
 
 ## 📌 ค้าง/ความเสี่ยงที่ต้องจำ
 - สูตรคะแนน attendance มีค่าเริ่มต้นแล้ว (40/4/1/0.5/1) และ HR ปรับเองได้ที่หน้า `/people` — แต่ยังไม่มีใครยืนยันว่าค่าเริ่มต้นนี้ตรงนโยบายบริษัทจริง

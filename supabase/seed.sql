@@ -3,7 +3,7 @@
 --
 -- 1) Role catalog
 -- 2) Master BARS templates derived from legacy form FMHR07
---    (see docs/evaluation-form-analysis.md). desc_1..desc_5 left NULL —
+--    (see docs/ANALYSIS.md). desc_1..desc_5 left NULL —
 --    HR fills the behavioral anchors later.
 
 -- ── roles ─────────────────────────────────────────────────────────────────

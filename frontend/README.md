@@ -1,6 +1,6 @@
 # Frontend (React + Tailwind + Vite)
 
-Scaffolded in Step 7 (see ../docs/PHASE_1_PLAN.md). Package manager: **npm**.
+Scaffolded in Step 7 (see ../docs/archive/PHASE_1_PLAN.md). Package manager: **npm**.
 
 ## Setup (later, when coding Step 7)
 ```

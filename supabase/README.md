@@ -32,4 +32,4 @@ supabase db push
   does NOT bypass RLS, and set `request.jwt.claims` per request.
 - `service_role` bypasses RLS — use only for controlled admin/provisioning tasks.
 - Custom Access Token Hook must inject: `company_id`, `is_super_admin`, `roles`.
-  (Configured in Step 3 — see ../docs/PHASE_1_PLAN.md.)
+  (Configured in Step 3 — see ../docs/archive/PHASE_1_PLAN.md.)

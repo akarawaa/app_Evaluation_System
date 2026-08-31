@@ -1,35 +1,32 @@
-# คู่มือสำหรับ AI Assistant / นักพัฒนา (Session Handoff Guide)
+# CLAUDE.md — app_Evaluation_System (session handoff)
 
-> **อ่านไฟล์นี้ + [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) ก่อนเริ่มงานทุกครั้ง**
+> เริ่ม session: อ่าน **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)** + **[`../platform-core/docs/CONVENTIONS.md`](../platform-core/docs/CONVENTIONS.md)** ก่อนเสมอ
 
-## โปรเจกต์นี้คืออะไร
-E-Appraisal — ระบบประเมินผลพนักงานแบบ **SaaS Multi-Tenant** แทนใบประเมินกระดาษ FMHR07
-Stack: FastAPI + Supabase (Postgres/Auth/RLS) + React/Tailwind
+## แอปนี้คืออะไร
+E-Appraisal — ประเมินผลพนักงาน SaaS multi-tenant แทนใบกระดาษ FMHR07. live production.
+Stack: FastAPI + Supabase (Postgres/Auth/RLS/Storage) + React/Tailwind. ส่วนหนึ่งของ **HR Suite**
+([`../platform-core/docs/PLATFORM_ARCHITECTURE.md`](../platform-core/docs/PLATFORM_ARCHITECTURE.md)) — Supabase project เดียวกับ leave/attendance
 
-## กติกาที่ต้องยึด (Non-negotiable)
-1. **Multi-tenant isolation มาก่อนเสมอ** — ทุกตาราง tenant-scoped ต้องมี `company_id` + RLS policy
-   ห้าม merge/deploy โค้ดที่ query ข้อมูลข้าม tenant ได้
-2. **Security by design (OWASP)** — ทำตาม [docs/SECURITY.md](docs/SECURITY.md) ทุก endpoint/ตาราง
-   ต้อง map ว่าแต่ละฟีเจอร์คุ้มครอง A01–A10 อย่างไร
-3. **Audit ทุกการเปลี่ยนข้อมูลสำคัญ** — ตาม [docs/LOGGING_AND_AUDIT.md](docs/LOGGING_AND_AUDIT.md)
-4. **เกณฑ์ประเมินไม่ hardcode** — เป็น template ปรับได้ (BARS)
-5. **Phase 1 ไม่ทำ approval workflow** — เลื่อนไป Phase 2
-6. **ห้าม commit secrets** — ใช้ `.env` (อยู่ใน .gitignore) มี `.env.example` เป็นแม่แบบ
+## Non-negotiable — เฉพาะแอปนี้
+1. **เกณฑ์ประเมินไม่ hardcode** — เป็น BARS template ปรับได้ (master default + clone ต่อ tenant)
+2. **"รับทราบ" ≠ "เห็นด้วย"** — acknowledgement มี decision 3 แบบ (acknowledged / acknowledged_disagreed / refused) + ช่องความเห็นแย้ง — ห้ามบังคับ "เห็นด้วย" ถึงจะผ่าน (หลักฐานชั้นศาลแรงงาน)
+3. **`evaluations.company_id` = บริษัทของพนักงานที่ถูกประเมิน** ไม่ใช่ผู้กระทำ (super_admin สร้างใบให้บริษัทอื่นได้) — template ต้อง `company_id` ตรงกับพนักงาน
+4. **super_admin bypass RLS** — ทุก list endpoint ที่ super_admin ใช้ได้ต้องรับ `company_id` param ชัดเจน (non-super_admin ส่งมา = 403)
+5. **ตารางสร้างหลัง migration `0006`** ต้อง `grant select/insert/update/delete ... to authenticated` เอง (0006 grant ย้อนหลังไม่ครอบ)
 
-## ขั้นตอนเวลาเริ่มงานใหม่ (session ใหม่)
-1. อ่าน `docs/PROJECT_STATUS.md` → ดูว่าทำถึงไหน / ทำอะไรต่อ
-2. `git log --oneline -10` → ดูงานล่าสุด
-3. ทำงานตาม [docs/PHASE_1_PLAN.md](docs/PHASE_1_PLAN.md) ทีละสเต็ป
-4. **จบงานทุกครั้ง:** อัปเดต `docs/PROJECT_STATUS.md` (ทำอะไรไป / เหลืออะไร / ติดอะไร) แล้ว commit
+> กติกา suite (tenant isolation, core FK-only, migration timeline, security/PDPA baseline, audit,
+> bug classes: timezone/`window.confirm`/auth-after-transition/ruff-py39, git, DoD) → **CONVENTIONS.md**
 
-## Git convention
-- Branch จาก main เสมอ (อย่า commit ตรง main สำหรับงานใหญ่)
-- Commit message: `<type>: <สรุปสั้น>` เช่น `feat: add companies table + RLS`
-- ทุก commit ที่แตะ schema/security ต้องอัปเดตเอกสาร docs/ ที่เกี่ยวข้องในคอมมิตเดียวกัน
+## เอกสาร
+| งาน | อ่าน |
+|---|---|
+| สถานะ / ทำอะไรต่อ | [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) |
+| แผนเฟส | [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) |
+| schema | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) |
+| ฟีเจอร์ประเมิน | [docs/EVALUATION_DESIGN.md](docs/EVALUATION_DESIGN.md) |
+| security / audit | [docs/SECURITY.md](docs/SECURITY.md) · [docs/LOGGING_AND_AUDIT.md](docs/LOGGING_AND_AUDIT.md) |
+| deploy | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 
-## Definition of Done (ต่อ 1 หน่วยงาน)
-- [ ] มี `company_id` + RLS (ถ้าเป็นตาราง tenant-scoped)
-- [ ] มี audit logging (ถ้าเป็นการเขียน/แก้/ลบข้อมูล)
-- [ ] Input ผ่าน validation (Pydantic / zod)
-- [ ] มี negative test: user tenant A เข้าถึงข้อมูล tenant B ไม่ได้
-- [ ] อัปเดตเอกสาร docs/ ที่เกี่ยวข้อง
+## จบงานทุกครั้ง
+อัปเดต [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) (ทำอะไร / เหลืออะไร / ติดอะไร) + commit
+(`<type>: <สรุป>`, branch จาก master สำหรับงานใหญ่, อัปเดต docs ในคอมมิตเดียวกับ schema/security)

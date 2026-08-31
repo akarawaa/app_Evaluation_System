@@ -29,7 +29,7 @@
 
 > Phase 2 เพิ่ม: `evaluation_submitted`, `score_changed`, `evaluation_approved` ฯลฯ
 
-### โครงสร้าง (สรุป — รายละเอียดใน DATABASE_SCHEMA.md)
+### โครงสร้าง (สรุป — รายละเอียดใน DATA_MODEL.md)
 `id, company_id, actor_profile_id, action, entity_type, entity_id, before(jsonb), after(jsonb), ip, user_agent, created_at`
 
 ### กติกาความสมบูรณ์ (Integrity)

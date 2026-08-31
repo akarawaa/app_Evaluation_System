@@ -1,4 +1,4 @@
-"""FastAPI entrypoint. Wiring per docs/PHASE_1_PLAN.md Step 5."""
+"""FastAPI entrypoint. Wiring per docs/archive/PHASE_1_PLAN.md Step 5."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

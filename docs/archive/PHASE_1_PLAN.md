@@ -22,7 +22,7 @@
 
 ## Step 2 — Tenant & Identity Schema + RLS
 - [ ] ตาราง: `companies`, `branches`, `profiles`, `employees`, `roles`, `user_roles`
-- [ ] FK + CHECK + Index ตาม DATABASE_SCHEMA.md
+- [ ] FK + CHECK + Index ตาม DATA_MODEL.md
 - [ ] **เปิด RLS ทุกตาราง** + policy `company_id = auth.jwt()->>'company_id'`
 - [ ] security-definer function สำหรับ `super_admin`
 - [ ] trigger `updated_at`
@@ -35,7 +35,7 @@
 
 ## Step 4 — Seed Master Criteria Template (FMHR07 → BARS)
 - [ ] seed `criteria_templates` (master, company_id NULL): operational (11 หมวด/28 ข้อ), supervisor (16 หมวด/42 ข้อ)
-- [ ] ใส่ categories + items ตาม docs/evaluation-form-analysis.md
+- [ ] ใส่ categories + items ตาม docs/ANALYSIS.md
 - [ ] เว้น `desc_1..desc_5` เป็น placeholder (ให้ HR เติม BARS จริงภายหลัง)
 - **DoD:** query master template ได้ครบตามใบ FMHR07
 
