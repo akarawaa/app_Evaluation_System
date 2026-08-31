@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
+from app.api.auth_handoff import router as auth_handoff_router
 from app.api.evaluations import router as evaluations_router
 from app.api.notifications import router as notifications_router
 from app.api.routes import router as api_router
@@ -27,6 +28,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(auth_handoff_router)
 app.include_router(admin_router)
 app.include_router(evaluations_router)
 app.include_router(notifications_router)

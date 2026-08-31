@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import RequireRole from './components/RequireRole'
+import AuthHandoff from './pages/AuthHandoff'
 import Compare from './pages/Compare'
 import Dashboard from './pages/Dashboard'
 import EvaluationDetail from './pages/EvaluationDetail'
@@ -20,6 +21,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* SSO handoff from hr-portal (platform-core/docs/PORTAL.md C3) */}
+      <Route path="/auth/handoff" element={<AuthHandoff />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><RequireRole anyOf={['hr_admin']}><People /></RequireRole></ProtectedRoute>} />
