@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import CurrentUser
-from app.services import attendance_formula
+from app.services import attendance_brackets
 from app.services.audit import write_audit
 
 HEADERS = [
@@ -70,7 +70,7 @@ async def import_attendance(session: AsyncSession, user: CurrentUser, raw: bytes
 
     errors: list[dict] = []
     updated = skipped_overridden = 0
-    formula = await attendance_formula.get_formula(session, user.company_id)
+    brackets = await attendance_brackets.get_brackets(session, user.company_id)
 
     for i, row in enumerate(rows, start=2):  # row 1 is the header
         emp_code = _get(row, "รหัสพนักงาน")
@@ -109,7 +109,7 @@ async def import_attendance(session: AsyncSession, user: CurrentUser, raw: bytes
                     skipped_overridden += 1
                     continue
 
-                score = attendance_formula.compute_score(formula, sick_days, personal_days, late_count, absent_days)
+                score = attendance_brackets.compute_score(brackets, sick_days, personal_days, late_count, absent_days)
                 await session.execute(text(
                     "insert into evaluation_attendance "
                     "(evaluation_id, company_id, sick_days, personal_days, late_count, late_minutes, absent_days, "

@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_tenant_session
 from app.core.security import CurrentUser, get_current_user, require_roles
+from app.schemas.attendance_brackets import AttendanceBracketsSetIn
 from app.schemas.attendance_formula import AttendanceFormulaIn, AttendanceFormulaOut
 from app.schemas.branch import BranchCreate, BranchOut
 from app.schemas.employee import EmployeeCreate, EmployeeOut, EmployeeUpdate
 from app.schemas.employee_import import ImportResult
 from app.schemas.tenant import ActiveCompanyIn, InviteUserIn, UserEmployeeLinkIn, UserStatusIn
 from app.schemas.user import UserOut
+from app.services import attendance_brackets as attendance_brackets_svc
 from app.services import attendance_formula as attendance_formula_svc
 from app.services import company_access as company_access_svc
 from app.services import email as email_svc
@@ -325,3 +327,27 @@ async def set_attendance_formula(
     session: AsyncSession = Depends(get_tenant_session),
 ) -> dict:
     return await attendance_formula_svc.set_formula(session, user, payload)
+
+
+# Bracket-based scoring (0023) is the active model -- see
+# services/attendance_brackets.py for why the linear formula above can't
+# represent the real policy. Kept as a separate settings surface (not a
+# replacement of the routes above) since the DB table is additive, not a
+# migration of the old one.
+@router.get("/settings/attendance-brackets")
+async def get_attendance_brackets(
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> dict:
+    return await attendance_brackets_svc.get_brackets(session, user.company_id)
+
+
+@router.put("/settings/attendance-brackets/{category}")
+async def set_attendance_brackets(
+    category: str,
+    payload: AttendanceBracketsSetIn,
+    user: CurrentUser = Depends(require_roles("hr_admin")),
+    session: AsyncSession = Depends(get_tenant_session),
+) -> list[dict]:
+    items = [i.model_dump() for i in payload.items]
+    return await attendance_brackets_svc.set_brackets(session, user, category, items)

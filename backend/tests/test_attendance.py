@@ -24,13 +24,16 @@ async def test_evaluator_cannot_set_attendance(api, org):
 
 async def test_hr_sets_attendance_auto_computed(api, org):
     eid = await _make_eval(api, org)
-    # 40 - 4*1(absent) - 1*2(personal) - 0.5*1(sick) - 1*3(late) = 40-4-2-0.5-3 = 30.5
+    # Bracket defaults (services/attendance_brackets.py, transcribed from the
+    # real policy FMHR07 p.4): sick=1 -> 0-5 bracket=10, personal=2 -> 1-3
+    # bracket=7, late=3 -> 1-3 bracket=7, absent=1 -> 1-1 bracket=6.
+    # 10+7+7+6 = 30
     r = await api.put(f"/api/evaluations/{eid}/attendance", headers=auth(org["hr"]), json={
         "sick_days": 1, "personal_days": 2, "late_count": 3, "late_minutes": 30, "absent_days": 1,
     })
     assert r.status_code == 200, r.text
     body = r.json()
-    assert float(body["attendance"]["attendance_score"]) == 30.5
+    assert float(body["attendance"]["attendance_score"]) == 30.0
     assert body["attendance"]["attendance_score_overridden"] is False
 
 
@@ -108,7 +111,9 @@ async def test_attendance_import_updates_matching_evaluation(api, org):
     assert body["errors"] == []
 
     detail = (await api.get(f"/api/evaluations/{eid}", headers=auth(org["hr"]))).json()
-    assert float(detail["attendance"]["attendance_score"]) == 37.5  # 40 - 0.5*1(sick) - 1*2(late count)
+    # sick=1 -> 0-5 bracket=10, personal=0 -> 0-0 bracket=10, late=2 -> 1-3
+    # bracket=7, absent=0 -> 0-0 bracket=10. 10+10+7+10 = 37
+    assert float(detail["attendance"]["attendance_score"]) == 37.0
 
 
 async def test_attendance_import_skips_overridden(api, org):

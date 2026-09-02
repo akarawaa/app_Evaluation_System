@@ -1,5 +1,13 @@
-"""HR-configurable attendance formula: RBAC, persistence, tenant isolation,
-and that the saved formula actually feeds compute (set_attendance / import)."""
+"""HR-configurable attendance formula (0017, the older linear model):
+RBAC, persistence, tenant isolation.
+
+Superseded by the bracket-based model (0023, services/attendance_brackets.py
++ test_attendance_brackets.py) as the *active* scoring path -- the real
+policy scores each category by which bracket it falls in, which a linear
+"full_score - coef*count" deduction can't represent. This table/endpoint is
+left in place (harmless, unused by set_attendance/import from this point on)
+rather than dropped, so persistence/RBAC/isolation still get covered here --
+just not "does it feed compute" anymore, since it doesn't."""
 from conftest import auth
 from test_evaluation_lifecycle import _new, org  # noqa: F401
 
@@ -26,7 +34,7 @@ async def test_negative_coefficients_rejected(api, org):
     assert r.status_code == 422  # pydantic ge=0 constraint
 
 
-async def test_updated_formula_persists_and_is_used(api, org):
+async def test_updated_formula_persists(api, org):
     r = await api.put("/api/settings/attendance-formula", headers=auth(org["hr"]), json={
         "full_score": 30, "coef_absent": 2, "coef_personal": 2, "coef_sick": 2, "coef_late": 2,
     })
@@ -37,13 +45,17 @@ async def test_updated_formula_persists_and_is_used(api, org):
     assert r2.json() == {"full_score": 30.0, "coef_absent": 2.0, "coef_personal": 2.0,
                           "coef_sick": 2.0, "coef_late": 2.0}
 
-    # new formula actually feeds compute in set_attendance
+    # Superseded (see module docstring): this formula no longer feeds
+    # set_attendance's compute -- brackets do (test_attendance_brackets.py
+    # covers that). Confirm it really has no effect, so this table staying
+    # around never silently resurrects the old behavior.
     e = await api.post("/api/evaluations", headers=auth(org["sup"]), json=_new(org))
     eid = e.json()["id"]
     r3 = await api.put(f"/api/evaluations/{eid}/attendance", headers=auth(org["hr"]), json={
         "sick_days": 1, "personal_days": 0, "late_count": 0, "late_minutes": 0, "absent_days": 0,
     })
-    assert float(r3.json()["attendance"]["attendance_score"]) == 28.0  # 30 - 2*1(sick)
+    # bracket defaults: sick=1 -> 0-5=10, personal/late/absent all 0-count=10 each -> 40, not 28
+    assert float(r3.json()["attendance"]["attendance_score"]) == 40.0
 
 
 async def test_formula_is_tenant_isolated(api, org, world):

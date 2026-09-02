@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import CurrentUser
-from app.services import attendance_formula
+from app.services import attendance_brackets
 from app.services.audit import write_audit
 
 
@@ -339,9 +339,9 @@ async def set_attendance(session: AsyncSession, user: CurrentUser, eval_id: str,
         "select attendance_score, attendance_score_overridden from evaluation_attendance where evaluation_id = :id"
     ), {"id": eval_id})).mappings().first()
 
-    formula = await attendance_formula.get_formula(session, user.company_id)
-    computed = attendance_formula.compute_score(formula, payload.sick_days, payload.personal_days,
-                                                 payload.late_count, payload.absent_days)
+    brackets = await attendance_brackets.get_brackets(session, user.company_id)
+    computed = attendance_brackets.compute_score(brackets, payload.sick_days, payload.personal_days,
+                                                  payload.late_count, payload.absent_days)
     if payload.clear_override:
         score, overridden = computed, False
     elif payload.attendance_score is not None:

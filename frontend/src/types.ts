@@ -23,6 +23,22 @@ export type AttendanceFormula = {
   coef_late: number
 }
 
+// Bracket-based scoring (active model — see services/attendance_brackets.py
+// on the backend for why this replaced the linear formula above).
+export type AttendanceBracket = { min_value: number; max_value: number | null; score: number }
+export type AttendanceBracketCategory = 'personal' | 'absent' | 'sick' | 'late'
+export type AttendanceBrackets = Record<AttendanceBracketCategory, AttendanceBracket[]>
+
+export const ATTENDANCE_CATEGORY_LABEL: Record<AttendanceBracketCategory, string> = {
+  personal: 'ลากิจ (รวมลากิจไม่รับเงินเดือน)',
+  absent: 'ขาดงาน',
+  sick: 'ลาป่วย',
+  late: 'มาสาย',
+}
+export const ATTENDANCE_CATEGORY_UNIT: Record<AttendanceBracketCategory, string> = {
+  personal: 'วัน', absent: 'วัน', sick: 'วัน', late: 'ครั้ง',
+}
+
 export type Employee = {
   id: string
   emp_code: string

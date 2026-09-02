@@ -2,8 +2,78 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { apiDownload, apiGet, apiSend, apiUpload } from '../lib/api'
-import type { AttendanceFormula, AttendanceImportResult, Branch, Employee, EvalListItem, ImportResult, TenantUser } from '../types'
-import { INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL, STATUS_LABEL } from '../types'
+import type {
+  AttendanceBracket, AttendanceBracketCategory, AttendanceBrackets,
+  AttendanceImportResult, Branch, Employee, EvalListItem, ImportResult, TenantUser,
+} from '../types'
+import { ATTENDANCE_CATEGORY_LABEL, ATTENDANCE_CATEGORY_UNIT, INVITE_ROLES, LEVEL_LABEL, ROLE_LABEL, STATUS_LABEL } from '../types'
+
+const BRACKET_CATEGORIES: AttendanceBracketCategory[] = ['personal', 'absent', 'sick', 'late']
+
+function AttendanceBracketEditor({ category, rows, saving, onChange, onSave }: {
+  category: AttendanceBracketCategory
+  rows: AttendanceBracket[]
+  saving: boolean
+  onChange: (rows: AttendanceBracket[]) => void
+  onSave: () => void
+}) {
+  const unit = ATTENDANCE_CATEGORY_UNIT[category]
+  const update = (i: number, field: keyof AttendanceBracket, value: number | null) => {
+    const next = rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r))
+    onChange(next)
+  }
+  const addRow = () => {
+    const last = rows[rows.length - 1]
+    const min = last ? (last.max_value ?? last.min_value) + 1 : 0
+    onChange([...rows, { min_value: min, max_value: null, score: 0 }])
+  }
+  const removeRow = (i: number) => onChange(rows.filter((_, idx) => idx !== i))
+
+  return (
+    <div className="border rounded-lg p-3">
+      <h3 className="text-sm font-medium text-slate-700 mb-2">{ATTENDANCE_CATEGORY_LABEL[category]}</h3>
+      <table className="w-full text-xs mb-2">
+        <thead>
+          <tr className="text-left text-slate-500">
+            <th className="pb-1 pr-2">ตั้งแต่ ({unit})</th>
+            <th className="pb-1 pr-2">ถึง ({unit}) — เว้นว่าง = ไม่จำกัด</th>
+            <th className="pb-1 pr-2">คะแนน</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="pr-2 py-0.5">
+                <input type="number" min={0} className="border rounded px-1.5 py-0.5 w-16"
+                  value={r.min_value} onChange={(e) => update(i, 'min_value', Number(e.target.value))} />
+              </td>
+              <td className="pr-2 py-0.5">
+                <input type="number" min={0} className="border rounded px-1.5 py-0.5 w-16" placeholder="ไม่จำกัด"
+                  value={r.max_value ?? ''}
+                  onChange={(e) => update(i, 'max_value', e.target.value === '' ? null : Number(e.target.value))} />
+              </td>
+              <td className="pr-2 py-0.5">
+                <input type="number" min={0} step="0.5" className="border rounded px-1.5 py-0.5 w-16"
+                  value={r.score} onChange={(e) => update(i, 'score', Number(e.target.value))} />
+              </td>
+              <td>
+                <button onClick={() => removeRow(i)} className="text-slate-400 hover:text-red-600 text-xs">ลบ</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex gap-2">
+        <button onClick={addRow} className="text-xs text-blue-600 hover:text-blue-800">+ เพิ่มช่วง</button>
+        <button onClick={onSave} disabled={saving}
+          className="ml-auto bg-slate-700 text-white rounded px-3 py-1 text-xs disabled:opacity-50">
+          {saving ? 'กำลังบันทึก…' : 'บันทึกหมวดนี้'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 const emptyForm = {
   emp_code: '', full_name: '', position: '', email: '', level: 'operational',
@@ -55,19 +125,19 @@ export default function People() {
   const [attImporting, setAttImporting] = useState(false)
   const attFileInputRef = useRef<HTMLInputElement>(null)
 
-  const [formula, setFormula] = useState<AttendanceFormula | null>(null)
-  const [savingFormula, setSavingFormula] = useState(false)
+  const [brackets, setBrackets] = useState<AttendanceBrackets | null>(null)
+  const [savingCategory, setSavingCategory] = useState<AttendanceBracketCategory | null>(null)
 
   const load = () => Promise.all([
     apiGet<Employee[]>(`/api/employees${qs}`).then(setEmployees),
     apiGet<Branch[]>(`/api/branches${qs}`).then(setBranches),
     apiGet<TenantUser[]>(`/api/users${qs}`).then(setUsers),
-    // attendance formula/import/evaluations aren't scoped to a specific
+    // attendance brackets/import/evaluations aren't scoped to a specific
     // company yet -- out of scope for cross-company browsing for now,
     // hidden below instead (GET /api/evaluations has no company_id param;
     // calling it while browsing another tenant would leak that tenant's
     // evaluations into a super_admin's own RLS-bypassed view).
-    companyId ? Promise.resolve() : apiGet<AttendanceFormula>('/api/settings/attendance-formula').then(setFormula),
+    companyId ? Promise.resolve() : apiGet<AttendanceBrackets>('/api/settings/attendance-brackets').then(setBrackets),
     companyId ? Promise.resolve() : apiGet<EvalListItem[]>('/api/evaluations').then(setEvaluations),
   ]).catch((e) => setError(String(e)))
 
@@ -160,13 +230,16 @@ export default function People() {
     }
   }
 
-  const saveFormula = () => {
-    if (!formula) return
-    setSavingFormula(true); setError(null); setMsg(null)
-    apiSend<AttendanceFormula>('PUT', '/api/settings/attendance-formula', formula)
-      .then((f) => { setFormula(f); setMsg('บันทึกสูตรคะแนนการมา-ลาแล้ว') })
+  const setBracketRows = (category: AttendanceBracketCategory, rows: AttendanceBracket[]) =>
+    setBrackets((b) => (b ? { ...b, [category]: rows } : b))
+
+  const saveBrackets = (category: AttendanceBracketCategory) => {
+    if (!brackets) return
+    setSavingCategory(category); setError(null); setMsg(null)
+    apiSend<AttendanceBracket[]>('PUT', `/api/settings/attendance-brackets/${category}`, { items: brackets[category] })
+      .then((rows) => { setBracketRows(category, rows); setMsg(`บันทึกเกณฑ์หมวด "${ATTENDANCE_CATEGORY_LABEL[category]}" แล้ว`) })
       .catch((e) => setError(String(e)))
-      .finally(() => setSavingFormula(false))
+      .finally(() => setSavingCategory(null))
   }
 
   const sendInvite = () => {
@@ -228,7 +301,7 @@ export default function People() {
         {companyId && (
           <p className="text-xs bg-blue-50 text-blue-700 rounded px-3 py-2">
             กำลังจัดการข้อมูลของบริษัท <strong>{companyName ?? companyId}</strong> ในฐานะ super_admin —
-            การนำเข้าไฟล์ CSV และตั้งสูตรคะแนนการมา-ลา ยังต้องให้ hr_admin ของบริษัทนี้ทำเองในหน้านี้โดยตรง (login เป็น hr_admin)
+            การนำเข้าไฟล์ CSV และตั้งเกณฑ์คะแนนการมา-ลา ยังต้องให้ hr_admin ของบริษัทนี้ทำเองในหน้านี้โดยตรง (login เป็น hr_admin)
           </p>
         )}
 
@@ -365,47 +438,25 @@ export default function People() {
 
         {tab === 'settings' && !companyId && (
         <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">สูตรคำนวณคะแนนการมา-ลา</h2>
+          <h2 className="font-medium mb-1 text-slate-700">เกณฑ์คะแนนการมา-ลา</h2>
           <p className="text-xs text-slate-500 mb-3">
-            ระบบคำนวณคะแนนการมา-ลา (เต็ม) จากข้อมูลดิบด้วยสูตร: คะแนนเต็ม − (ค่าลด×วันขาด) − (ค่าลด×วันลากิจ) − (ค่าลด×วันลาป่วย) − (ค่าลด×ครั้งมาสาย)
-            ปรับตัวเลขได้ตามนโยบายบริษัท การเปลี่ยนสูตรมีผลกับข้อมูลที่กรอก/นำเข้าใหม่หลังจากนี้ ไม่กระทบคะแนนที่บันทึกไว้แล้ว
+            แต่ละหมวดคะแนนเต็ม 10 (รวม 4 หมวด = 40) ให้คะแนนตามช่วงที่จำนวนวัน/ครั้งจริงตกอยู่ — ไม่ใช่การหักคะแนนต่อหน่วย
+            เช่น ลาป่วย 3 วันอาจยังได้เต็ม 10 ถ้าอยู่ในช่วงที่กำหนดไว้ ปรับช่วง/คะแนนได้ตามนโยบายบริษัทจริงทีละหมวด
+            ต้องกรอกให้ครอบคลุมตั้งแต่ 0 ถึงไม่จำกัด (ช่วงสุดท้ายเว้นช่อง "ถึง" ว่างไว้) โดยไม่มีช่องว่างหรือช่วงทับซ้อนกัน
+            การเปลี่ยนเกณฑ์มีผลกับข้อมูลที่กรอก/นำเข้าใหม่หลังจากนี้ ไม่กระทบคะแนนที่บันทึกไว้แล้ว
           </p>
-          {formula && (
-            <div className="flex flex-wrap gap-3 items-end">
-              <label className="text-sm">
-                <span className="block text-slate-500">คะแนนเต็ม</span>
-                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
-                  value={formula.full_score}
-                  onChange={(e) => setFormula({ ...formula, full_score: Number(e.target.value) })} />
-              </label>
-              <label className="text-sm">
-                <span className="block text-slate-500">ลด/วันขาดงาน</span>
-                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
-                  value={formula.coef_absent}
-                  onChange={(e) => setFormula({ ...formula, coef_absent: Number(e.target.value) })} />
-              </label>
-              <label className="text-sm">
-                <span className="block text-slate-500">ลด/วันลากิจ</span>
-                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
-                  value={formula.coef_personal}
-                  onChange={(e) => setFormula({ ...formula, coef_personal: Number(e.target.value) })} />
-              </label>
-              <label className="text-sm">
-                <span className="block text-slate-500">ลด/วันลาป่วย</span>
-                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
-                  value={formula.coef_sick}
-                  onChange={(e) => setFormula({ ...formula, coef_sick: Number(e.target.value) })} />
-              </label>
-              <label className="text-sm">
-                <span className="block text-slate-500">ลด/ครั้งมาสาย</span>
-                <input type="number" min={0} step="0.5" className="border rounded px-2 py-1 w-24"
-                  value={formula.coef_late}
-                  onChange={(e) => setFormula({ ...formula, coef_late: Number(e.target.value) })} />
-              </label>
-              <button onClick={saveFormula} disabled={savingFormula}
-                className="bg-slate-700 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
-                {savingFormula ? 'กำลังบันทึก…' : 'บันทึกสูตร'}
-              </button>
+          {brackets && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {BRACKET_CATEGORIES.map((cat) => (
+                <AttendanceBracketEditor
+                  key={cat}
+                  category={cat}
+                  rows={brackets[cat]}
+                  saving={savingCategory === cat}
+                  onChange={(rows) => setBracketRows(cat, rows)}
+                  onSave={() => saveBrackets(cat)}
+                />
+              ))}
             </div>
           )}
         </section>
