@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { apiSend } from '../lib/api'
 import { supabase } from '../lib/supabase'
+import { Button, Card } from '../shared/ui'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -44,37 +45,39 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white p-8 rounded-xl shadow space-y-4">
-        <h1 className="text-xl font-semibold text-slate-800">ตั้งรหัสผ่านใหม่</h1>
-        {!ready && (
-          <p className="text-sm text-amber-600">
-            กำลังตรวจสอบลิงก์... ถ้าลิงก์หมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่จากหน้า "ลืมรหัสผ่าน"
-          </p>
-        )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <input
-          className="w-full border rounded px-3 py-2"
-          type="password"
-          placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={!ready}
-          required
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          type="password"
-          placeholder="ยืนยันรหัสผ่านใหม่"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          disabled={!ready}
-          required
-        />
-        <button disabled={busy || !ready} className="w-full bg-slate-800 text-white rounded py-2 disabled:opacity-50">
-          {busy ? '...' : 'บันทึกรหัสผ่านใหม่'}
-        </button>
-      </form>
+    <div className="flex min-h-screen items-center justify-center bg-canvas font-sans p-4">
+      <Card className="w-full max-w-sm">
+        <form onSubmit={submit} className="space-y-4">
+          <h1 className="text-xl font-semibold text-ink">ตั้งรหัสผ่านใหม่</h1>
+          {!ready && (
+            <p className="text-sm text-amber-600">
+              กำลังตรวจสอบลิงก์... ถ้าลิงก์หมดอายุหรือไม่ถูกต้อง กรุณาขอลิงก์ใหม่จากหน้า "ลืมรหัสผ่าน"
+            </p>
+          )}
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <input
+            className="w-full rounded border border-line px-3 py-2"
+            type="password"
+            placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={!ready}
+            required
+          />
+          <input
+            className="w-full rounded border border-line px-3 py-2"
+            type="password"
+            placeholder="ยืนยันรหัสผ่านใหม่"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            disabled={!ready}
+            required
+          />
+          <Button type="submit" disabled={busy || !ready} className="w-full">
+            {busy ? '...' : 'บันทึกรหัสผ่านใหม่'}
+          </Button>
+        </form>
+      </Card>
     </div>
   )
 }

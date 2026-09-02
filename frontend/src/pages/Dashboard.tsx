@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiGet } from '../lib/api'
+import { Section } from '../shared/ui'
 import type { Employee, InboxItem } from '../types'
 import { ACTION_LABEL, LEVEL_LABEL } from '../types'
 
@@ -35,34 +36,36 @@ export default function Dashboard() {
   const showRoster = isHrAdmin || myReports.length > 0
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas font-sans">
       <AppHeader />
 
-      <main className="p-6 space-y-6 max-w-3xl mx-auto">
-        {error && <p className="text-red-600">{error}</p>}
+      <main className="mx-auto max-w-3xl space-y-6 p-6">
+        {error && <p className="text-danger">{error}</p>}
 
         {inbox.length > 0 && (
-          <Link to="/inbox" className="block bg-white rounded-xl shadow border border-blue-200 p-5 hover:border-blue-400 transition-colors">
+          <Link
+            to="/inbox"
+            className="block rounded-card border border-primary/30 bg-surface p-5 shadow-card transition-colors hover:border-primary"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-medium text-slate-800">งานรอดำเนินการของคุณ</h2>
-                  <span className="text-xs font-semibold bg-blue-600 text-white rounded-full px-2 py-0.5">{inbox.length}</span>
+                  <h2 className="font-medium text-ink">งานรอดำเนินการของคุณ</h2>
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-fg">{inbox.length}</span>
                 </div>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="mt-1 text-sm text-muted">
                   {inbox.slice(0, 2).map((it) => `${it.full_name} ${ACTION_LABEL[it.action]}`).join(' · ')}
                   {inbox.length > 2 ? ` และอีก ${inbox.length - 2} รายการ` : ''}
                 </p>
               </div>
-              <span className="text-sm text-blue-600 font-medium whitespace-nowrap">ไปที่งานที่รอฉัน →</span>
+              <span className="whitespace-nowrap text-sm font-medium text-primary">ไปที่งานที่รอฉัน →</span>
             </div>
           </Link>
         )}
 
         {me && (
-          <section className="bg-white rounded-xl shadow p-5">
-            <h2 className="font-medium mb-2 text-slate-700">ผู้ใช้ปัจจุบัน</h2>
-            <dl className="text-sm text-slate-600 space-y-1">
+          <Section title="ผู้ใช้ปัจจุบัน">
+            <dl className="space-y-1 text-sm text-muted">
               <div>อีเมล: {me.email}</div>
               <div>บริษัท: {me.company_name ?? (me.is_super_admin ? 'ทุกบริษัท (super_admin)' : '—')}</div>
               {me.branch_name && <div>สาขา: {me.branch_name}</div>}
@@ -71,20 +74,23 @@ export default function Dashboard() {
                 {me.is_super_admin ? ' (super_admin)' : ''}
               </div>
             </dl>
-          </section>
+          </Section>
         )}
 
         {showRoster && (
-          <section className="bg-white rounded-xl shadow p-5">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="font-medium text-slate-700">{rosterTitle}</h2>
-              {isHrAdmin && (
-                <Link to="/people" className="text-xs text-blue-600 hover:text-blue-800">จัดการพนักงาน &amp; สาขา →</Link>
-              )}
-            </div>
+          <Section
+            title={rosterTitle}
+            actions={
+              isHrAdmin && (
+                <Link to="/people" className="text-xs text-primary hover:text-primary-hover">
+                  จัดการพนักงาน &amp; สาขา →
+                </Link>
+              )
+            }
+          >
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-slate-500 border-b">
+                <tr className="border-b border-line text-left text-muted">
                   <th className="py-1">รหัส</th>
                   <th>ชื่อ</th>
                   <th>ประเภทแบบประเมิน</th>
@@ -93,7 +99,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {roster.map((e) => (
-                  <tr key={e.id} className="border-b last:border-0">
+                  <tr key={e.id} className="border-b border-line last:border-0">
                     <td className="py-1">{e.emp_code}</td>
                     <td>{e.full_name}</td>
                     <td>{LEVEL_LABEL[e.level] ?? e.level}</td>
@@ -102,14 +108,14 @@ export default function Dashboard() {
                 ))}
                 {roster.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-3 text-slate-400">
+                    <td colSpan={4} className="py-3 text-faint">
                       ไม่มีข้อมูล
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </section>
+          </Section>
         )}
       </main>
     </div>

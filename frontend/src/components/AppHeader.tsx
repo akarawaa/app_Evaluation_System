@@ -47,30 +47,30 @@ export default function AppHeader({ title }: { title?: string }) {
   const { pathname } = useLocation()
 
   return (
-    <header className="bg-white border-b px-4 sm:px-6 py-3">
-      <div className="flex flex-wrap justify-between items-center gap-x-3 gap-y-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link to="/" className="font-semibold text-slate-800 hover:text-slate-900 shrink-0">E-Appraisal</Link>
-          {title && <span className="text-slate-300 shrink-0">/</span>}
-          {title && <span className="text-sm text-slate-600 break-words">{title}</span>}
+    <header className="border-b border-line bg-surface px-4 py-3 font-sans sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link to="/" className="shrink-0 font-semibold text-ink hover:text-ink">E-Appraisal</Link>
+          {title && <span className="shrink-0 text-faint">/</span>}
+          {title && <span className="break-words text-sm text-muted">{title}</span>}
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <CompanySwitcher />
           <CurrentUserBadge />
-          <button onClick={signOut} className="text-sm text-slate-600 hover:text-slate-900 shrink-0">
+          <button onClick={signOut} className="shrink-0 text-sm text-muted hover:text-ink">
             ออกจากระบบ
           </button>
         </div>
       </div>
-      <nav className="flex items-center gap-4 mt-2 flex-wrap">
+      <nav className="mt-2 flex flex-wrap items-center gap-4">
         {NAV_ITEMS.filter((item) => item.show(me)).map((item) => (
           <Link
             key={item.to}
             to={item.to}
             className={
               item.isActive(pathname)
-                ? 'text-sm font-medium text-blue-700 border-b-2 border-blue-700 pb-0.5'
-                : 'text-sm text-blue-600 hover:text-blue-800'
+                ? 'border-b-2 border-primary pb-0.5 text-sm font-medium text-primary-hover'
+                : 'text-sm text-primary hover:text-primary-hover'
             }
           >
             {item.label}

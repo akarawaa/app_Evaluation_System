@@ -53,16 +53,16 @@ export default function AuthHandoff() {
   }, [navigate])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-canvas font-sans p-6 text-center">
       {error ? (
         <div>
-          <p className="mb-3 text-red-600">{error}</p>
-          <a href="/login" className="text-sm text-blue-600 underline">
+          <p className="mb-3 text-danger">{error}</p>
+          <a href="/login" className="text-sm text-primary underline">
             ไปหน้าเข้าสู่ระบบ
           </a>
         </div>
       ) : (
-        <p className="text-slate-500">กำลังเข้าสู่ระบบ…</p>
+        <p className="text-muted">กำลังเข้าสู่ระบบ…</p>
       )}
     </div>
   )

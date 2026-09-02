@@ -18,11 +18,11 @@ export default function CurrentUserBadge() {
     : me.roles.map((r) => ROLE_LABEL[r] ?? r)
 
   return (
-    <span className="text-xs text-slate-500">
+    <span className="text-xs text-muted">
       {me.email ?? '—'}
-      {roleLabels.length > 0 && <span className="text-slate-400"> · {roleLabels.join(', ')}</span>}
-      {me.company_name && <span className="text-slate-400"> · {me.company_name}</span>}
-      {me.branch_name && <span className="text-slate-400"> ({me.branch_name})</span>}
+      {roleLabels.length > 0 && <span className="text-faint"> · {roleLabels.join(', ')}</span>}
+      {me.company_name && <span className="text-faint"> · {me.company_name}</span>}
+      {me.branch_name && <span className="text-faint"> ({me.branch_name})</span>}
     </span>
   )
 }
