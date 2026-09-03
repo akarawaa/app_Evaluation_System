@@ -39,14 +39,14 @@ export default function CompanySwitcher() {
         value={me?.company_id ?? ''}
         onChange={onChange}
         disabled={busy}
-        className="text-xs border rounded px-1 py-0.5 text-slate-600 bg-white"
+        className="rounded border border-line bg-surface px-1 py-0.5 text-xs text-muted"
         title="สลับบริษัท"
       >
         {companies.map((c) => (
           <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
         ))}
       </select>
-      {error && <span className="text-red-600 ml-1">{error}</span>}
+      {error && <span className="ml-1 text-danger">{error}</span>}
     </span>
   )
 }

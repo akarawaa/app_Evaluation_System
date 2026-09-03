@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../context/AuthContext'
+import { Button, Card } from '../shared/ui'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -23,36 +24,37 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white p-8 rounded-xl shadow space-y-4">
-        <h1 className="text-xl font-semibold text-slate-800">E-Appraisal — เข้าสู่ระบบ</h1>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <input
-          className="w-full border rounded px-3 py-2"
-          type="email"
-          placeholder="อีเมล"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          type="password"
-          placeholder="รหัสผ่าน"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button
-          disabled={busy}
-          className="w-full bg-slate-800 text-white rounded py-2 disabled:opacity-50"
-        >
-          {busy ? '...' : 'เข้าสู่ระบบ'}
-        </button>
-        <p className="text-center text-sm">
-          <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800">ลืมรหัสผ่าน?</Link>
-        </p>
-      </form>
+    <div className="flex min-h-screen items-center justify-center bg-canvas font-sans p-4">
+      <Card className="w-full max-w-sm">
+        <form onSubmit={submit} className="space-y-4">
+          <h1 className="text-xl font-semibold text-ink">E-Appraisal — เข้าสู่ระบบ</h1>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <input
+            className="w-full rounded border border-line px-3 py-2"
+            type="email"
+            placeholder="อีเมล"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            className="w-full rounded border border-line px-3 py-2"
+            type="password"
+            placeholder="รหัสผ่าน"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Button type="submit" disabled={busy} className="w-full">
+            {busy ? '...' : 'เข้าสู่ระบบ'}
+          </Button>
+          <p className="text-center text-sm">
+            <Link to="/forgot-password" className="text-primary hover:text-primary-hover">
+              ลืมรหัสผ่าน?
+            </Link>
+          </p>
+        </form>
+      </Card>
     </div>
   )
 }
