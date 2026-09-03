@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 
@@ -44,19 +44,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // supabase-js fires onAuthStateChange for TOKEN_REFRESHED too -- roughly
+  // hourly AND every time the tab regains focus. That keeps the SAME user,
+  // so re-fetching /api/me there only flashes a "loading user" state and,
+  // when the backend is cold (Render), hangs the whole app for tens of
+  // seconds on nothing more than an alt-tab. Reload me only when the
+  // identity actually changes.
+  const lastUid = useRef<string | undefined>(undefined)
+
   useEffect(() => {
+    const apply = async (next: Session | null, initial = false) => {
+      setSession(next)
+      const uid = next?.user?.id
+      if (!initial && uid === lastUid.current) return
+      lastUid.current = uid
+      if (next) {
+        await loadMe()
+      } else {
+        setMe(null)
+        setMeError(null)
+        setMeLoading(false)
+      }
+    }
+
     supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session)
-      if (data.session) await loadMe()
-      else setMeLoading(false)
+      await apply(data.session, true)
       setLoading(false)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-      if (next) void loadMe()
-      else { setMe(null); setMeLoading(false) }
+      void apply(next)
     })
     return () => sub.subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const signIn = async (email: string, password: string) => {
