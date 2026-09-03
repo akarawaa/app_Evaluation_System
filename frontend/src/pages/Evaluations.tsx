@@ -85,21 +85,21 @@ export default function Evaluations() {
   const canCreate = isHrOrAbove || creatableEmployees.length > 0
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title="ใบประเมินผล" />
 
       <main className="p-6 space-y-6 max-w-4xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
 
         {canCreate && (
-          <section className="bg-white rounded-xl shadow p-5">
-            <h2 className="font-medium text-slate-700">สร้างใบประเมิน</h2>
-            <p className="text-xs text-slate-500 mb-3">
+          <section className="bg-surface rounded-card shadow p-5">
+            <h2 className="font-medium text-ink">สร้างใบประเมิน</h2>
+            <p className="text-xs text-muted mb-3">
               {isHrOrAbove ? 'สร้างแทนพนักงานคนใดก็ได้ในบริษัท — ผู้ให้คะแนนจริงคือหัวหน้างานที่ผูกไว้กับพนักงานคนนั้น' : 'สร้างสำหรับลูกน้องของคุณ'}
             </p>
             <div className="flex flex-wrap gap-2 items-end">
               <label className="text-sm">
-                <span className="block text-slate-500">พนักงาน</span>
+                <span className="block text-muted">พนักงาน</span>
                 <select className="border rounded px-2 py-1 min-w-48" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
                   <option value="">— เลือก —</option>
                   {creatableEmployees.map((e) => (
@@ -108,7 +108,7 @@ export default function Evaluations() {
                 </select>
               </label>
               <label className="text-sm">
-                <span className="block text-slate-500">แบบฟอร์ม</span>
+                <span className="block text-muted">แบบฟอร์ม</span>
                 <select className="border rounded px-2 py-1 min-w-48" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
                   <option value="">— เลือก —</option>
                   {templates.map((t) => (
@@ -117,7 +117,7 @@ export default function Evaluations() {
                 </select>
               </label>
               <label className="text-sm">
-                <span className="block text-slate-500">ชนิด</span>
+                <span className="block text-muted">ชนิด</span>
                 <select className="border rounded px-2 py-1" value={kind}
                   onChange={(e) => { setKind(e.target.value); if (e.target.value === 'annual') setCheckpoint('') }}>
                   <option value="annual">ประจำปี</option>
@@ -126,7 +126,7 @@ export default function Evaluations() {
               </label>
               {kind === 'probation' && (
                 <label className="text-sm">
-                  <span className="block text-slate-500">ช่วงประเมิน (วัน)</span>
+                  <span className="block text-muted">ช่วงประเมิน (วัน)</span>
                   <select className="border rounded px-2 py-1" value={checkpoint} onChange={(e) => setCheckpoint(e.target.value)}>
                     <option value="">— เลือก —</option>
                     <option value="30">30 วัน</option>
@@ -137,18 +137,18 @@ export default function Evaluations() {
                 </label>
               )}
               <button onClick={create} disabled={busy || !employeeId || !templateId || (kind === 'probation' && !checkpoint)}
-                className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+                className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
                 สร้าง
               </button>
             </div>
           </section>
         )}
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">ส่งออกคะแนนเป็น Excel</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">ส่งออกคะแนนเป็น Excel</h2>
           <div className="flex flex-wrap gap-2 items-end">
             <label className="text-sm">
-              <span className="block text-slate-500">สถานะ</span>
+              <span className="block text-muted">สถานะ</span>
               <select className="border rounded px-2 py-1" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
                 <option value="">ทั้งหมด</option>
                 {Object.entries(STATUS_LABEL).map(([k, label]) => (
@@ -157,31 +157,31 @@ export default function Evaluations() {
               </select>
             </label>
             <label className="text-sm">
-              <span className="block text-slate-500">ตั้งแต่วันที่</span>
+              <span className="block text-muted">ตั้งแต่วันที่</span>
               <input type="date" className="border rounded px-2 py-1" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
             </label>
             <label className="text-sm">
-              <span className="block text-slate-500">ถึงวันที่</span>
+              <span className="block text-muted">ถึงวันที่</span>
               <input type="date" className="border rounded px-2 py-1" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
             </label>
             <button onClick={exportExcel} disabled={exporting}
-              className="bg-blue-600 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+              className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
               {exporting ? 'กำลังส่งออก…' : 'ดาวน์โหลด Excel'}
             </button>
           </div>
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">รายการใบประเมิน</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">รายการใบประเมิน</h2>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-500 border-b">
+              <tr className="text-left text-muted border-b">
                 <th className="py-1">พนักงาน</th><th>ชนิด</th><th>สถานะ</th><th>คะแนน</th><th>%</th><th>การรับทราบ</th>
               </tr>
             </thead>
             <tbody>
               {evals.map((ev) => (
-                <tr key={ev.id} className="border-b last:border-0 hover:bg-slate-50 cursor-pointer"
+                <tr key={ev.id} className="border-b last:border-0 hover:bg-canvas cursor-pointer"
                     onClick={() => navigate(`/evaluations/${ev.id}`)}>
                   <td className="py-1.5">{empName(ev.employee_id)}</td>
                   <td>{ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</td>
@@ -193,12 +193,12 @@ export default function Evaluations() {
                       ? <span className="text-green-700">{ACK_DECISION_LABEL[ev.acknowledgement_decision] ?? ev.acknowledgement_decision}</span>
                       : ['dept_approved', 'md_approved', 'finalized'].includes(ev.status)
                         ? <span className="text-amber-600">รอรับทราบ</span>
-                        : <span className="text-slate-300">—</span>}
+                        : <span className="text-faint">—</span>}
                   </td>
                 </tr>
               ))}
               {evals.length === 0 && (
-                <tr><td colSpan={6} className="py-3 text-slate-400">ยังไม่มีใบประเมิน</td></tr>
+                <tr><td colSpan={6} className="py-3 text-faint">ยังไม่มีใบประเมิน</td></tr>
               )}
             </tbody>
           </table>

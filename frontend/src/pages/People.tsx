@@ -31,10 +31,10 @@ function AttendanceBracketEditor({ category, rows, saving, onChange, onSave }: {
 
   return (
     <div className="border rounded-lg p-3">
-      <h3 className="text-sm font-medium text-slate-700 mb-2">{ATTENDANCE_CATEGORY_LABEL[category]}</h3>
+      <h3 className="text-sm font-medium text-ink mb-2">{ATTENDANCE_CATEGORY_LABEL[category]}</h3>
       <table className="w-full text-xs mb-2">
         <thead>
-          <tr className="text-left text-slate-500">
+          <tr className="text-left text-muted">
             <th className="pb-1 pr-2">ตั้งแต่ ({unit})</th>
             <th className="pb-1 pr-2">ถึง ({unit}) — เว้นว่าง = ไม่จำกัด</th>
             <th className="pb-1 pr-2">คะแนน</th>
@@ -58,16 +58,16 @@ function AttendanceBracketEditor({ category, rows, saving, onChange, onSave }: {
                   value={r.score} onChange={(e) => update(i, 'score', Number(e.target.value))} />
               </td>
               <td>
-                <button onClick={() => removeRow(i)} className="text-slate-400 hover:text-red-600 text-xs">ลบ</button>
+                <button onClick={() => removeRow(i)} className="text-faint hover:text-danger text-xs">ลบ</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className="flex gap-2">
-        <button onClick={addRow} className="text-xs text-blue-600 hover:text-blue-800">+ เพิ่มช่วง</button>
+        <button onClick={addRow} className="text-xs text-primary hover:text-primary-hover">+ เพิ่มช่วง</button>
         <button onClick={onSave} disabled={saving}
-          className="ml-auto bg-slate-700 text-white rounded px-3 py-1 text-xs disabled:opacity-50">
+          className="ml-auto bg-primary text-white rounded px-3 py-1 text-xs disabled:opacity-50">
           {saving ? 'กำลังบันทึก…' : 'บันทึกหมวดนี้'}
         </button>
       </div>
@@ -292,14 +292,14 @@ export default function People() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title={companyName ? `จัดการพนักงาน & สาขา — ${companyName}` : 'จัดการพนักงาน & สาขา'} />
 
       <main className="p-6 space-y-6 max-w-6xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
         {companyId && (
-          <p className="text-xs bg-blue-50 text-blue-700 rounded px-3 py-2">
+          <p className="text-xs bg-primary-soft text-primary rounded px-3 py-2">
             กำลังจัดการข้อมูลของบริษัท <strong>{companyName ?? companyId}</strong> ในฐานะ super_admin —
             การนำเข้าไฟล์ CSV และตั้งเกณฑ์คะแนนการมา-ลา ยังต้องให้ hr_admin ของบริษัทนี้ทำเองในหน้านี้โดยตรง (login เป็น hr_admin)
           </p>
@@ -312,8 +312,8 @@ export default function People() {
               onClick={() => setTab(t.id)}
               className={
                 tab === t.id
-                  ? 'text-sm font-medium text-blue-700 border-b-2 border-blue-700 pb-2 -mb-px'
-                  : 'text-sm text-slate-500 hover:text-slate-800 pb-2'
+                  ? 'text-sm font-medium text-primary border-b-2 border-primary pb-2 -mb-px'
+                  : 'text-sm text-muted hover:text-ink pb-2'
               }
             >
               {t.label}
@@ -323,15 +323,15 @@ export default function People() {
 
         {tab === 'import' && !companyId && (
         <>
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">นำเข้าพนักงานจากไฟล์</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">นำเข้าพนักงานจากไฟล์</h2>
+          <p className="text-xs text-muted mb-3">
             สำหรับตอนขึ้นระบบครั้งแรก หรือเพิ่ม/แก้ไขพนักงานจำนวนมากพร้อมกัน — ดาวน์โหลดเทมเพลต กรอกข้อมูลใน Excel
             แล้วอัปโหลดกลับ ระบุ "รหัสหัวหน้างาน"/"รหัสผจก.แผนก" เป็นรหัสพนักงานของอีกแถวในไฟล์เดียวกันได้เลย
             (นำเข้าซ้ำด้วยรหัสพนักงานเดิมจะเป็นการแก้ไข ไม่ใช่สร้างซ้ำ)
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <button onClick={downloadTemplate} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            <button onClick={downloadTemplate} className="text-sm text-primary hover:text-primary-hover font-medium">
               ↓ ดาวน์โหลดเทมเพลต (CSV)
             </button>
             <input
@@ -342,26 +342,26 @@ export default function People() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) runImport(f) }}
               className="text-sm"
             />
-            {importing && <span className="text-sm text-slate-400">กำลังนำเข้า…</span>}
+            {importing && <span className="text-sm text-faint">กำลังนำเข้า…</span>}
           </div>
 
           {importResult && (
             <div className="mt-4 border-t pt-4">
               <div className="flex flex-wrap gap-4 text-sm mb-2">
                 <span className="text-green-700">สร้างใหม่ {importResult.created} คน</span>
-                <span className="text-blue-700">แก้ไข {importResult.updated} คน</span>
-                <span className="text-slate-600">ผูกสายบังคับบัญชา {importResult.linked} รายการ</span>
+                <span className="text-primary">แก้ไข {importResult.updated} คน</span>
+                <span className="text-muted">ผูกสายบังคับบัญชา {importResult.linked} รายการ</span>
                 {importResult.branches_created > 0 && (
-                  <span className="text-slate-600">สร้างสาขาใหม่ {importResult.branches_created} สาขา</span>
+                  <span className="text-muted">สร้างสาขาใหม่ {importResult.branches_created} สาขา</span>
                 )}
                 {importResult.errors.length > 0 && (
-                  <span className="text-red-600 font-medium">ผิดพลาด {importResult.errors.length} แถว</span>
+                  <span className="text-danger font-medium">ผิดพลาด {importResult.errors.length} แถว</span>
                 )}
               </div>
               {importResult.errors.length > 0 && (
                 <table className="w-full text-xs mt-2">
                   <thead>
-                    <tr className="text-left text-slate-500 border-b">
+                    <tr className="text-left text-muted border-b">
                       <th className="py-1 pr-2 w-16">แถว</th><th className="pr-2 w-32">รหัสพนักงาน</th><th>ข้อผิดพลาด</th>
                     </tr>
                   </thead>
@@ -370,7 +370,7 @@ export default function People() {
                       <tr key={i} className="border-b last:border-0">
                         <td className="py-1 pr-2">{err.row}</td>
                         <td className="pr-2">{err.emp_code ?? '—'}</td>
-                        <td className="text-red-600">{err.message}</td>
+                        <td className="text-danger">{err.message}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -380,14 +380,14 @@ export default function People() {
           )}
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">นำเข้าข้อมูลการมา-ลาจากไฟล์</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">นำเข้าข้อมูลการมา-ลาจากไฟล์</h2>
+          <p className="text-xs text-muted mb-3">
             สำหรับ HR กรอกข้อมูลลาป่วย/ลากิจ/มาสาย/ขาดงานให้พนักงานหลายคนพร้อมกัน — ระบบคำนวณคะแนนการมา-ลา (เต็ม 40) ให้อัตโนมัติ
             แต่ละแถวจะจับคู่กับใบประเมินที่ยังไม่ปิดของพนักงานคนนั้น (ต้องมีใบประเมินอยู่แล้ว 1 ใบ) ถ้าใบไหนถูก HR ปรับคะแนนเองไว้แล้วจะไม่ถูกเขียนทับ
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <button onClick={downloadAttTemplate} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            <button onClick={downloadAttTemplate} className="text-sm text-primary hover:text-primary-hover font-medium">
               ↓ ดาวน์โหลดเทมเพลต (CSV)
             </button>
             <input
@@ -398,24 +398,24 @@ export default function People() {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) runAttImport(f) }}
               className="text-sm"
             />
-            {attImporting && <span className="text-sm text-slate-400">กำลังนำเข้า…</span>}
+            {attImporting && <span className="text-sm text-faint">กำลังนำเข้า…</span>}
           </div>
 
           {attImportResult && (
             <div className="mt-4 border-t pt-4">
               <div className="flex flex-wrap gap-4 text-sm mb-2">
-                <span className="text-blue-700">อัปเดตแล้ว {attImportResult.updated} ใบ</span>
+                <span className="text-primary">อัปเดตแล้ว {attImportResult.updated} ใบ</span>
                 {attImportResult.skipped_overridden > 0 && (
-                  <span className="text-slate-600">ข้าม (HR ปรับเองไว้แล้ว) {attImportResult.skipped_overridden} ใบ</span>
+                  <span className="text-muted">ข้าม (HR ปรับเองไว้แล้ว) {attImportResult.skipped_overridden} ใบ</span>
                 )}
                 {attImportResult.errors.length > 0 && (
-                  <span className="text-red-600 font-medium">ผิดพลาด {attImportResult.errors.length} แถว</span>
+                  <span className="text-danger font-medium">ผิดพลาด {attImportResult.errors.length} แถว</span>
                 )}
               </div>
               {attImportResult.errors.length > 0 && (
                 <table className="w-full text-xs mt-2">
                   <thead>
-                    <tr className="text-left text-slate-500 border-b">
+                    <tr className="text-left text-muted border-b">
                       <th className="py-1 pr-2 w-16">แถว</th><th className="pr-2 w-32">รหัสพนักงาน</th><th>ข้อผิดพลาด</th>
                     </tr>
                   </thead>
@@ -424,7 +424,7 @@ export default function People() {
                       <tr key={i} className="border-b last:border-0">
                         <td className="py-1 pr-2">{err.row}</td>
                         <td className="pr-2">{err.emp_code ?? '—'}</td>
-                        <td className="text-red-600">{err.message}</td>
+                        <td className="text-danger">{err.message}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -437,9 +437,9 @@ export default function People() {
         )}
 
         {tab === 'settings' && !companyId && (
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">เกณฑ์คะแนนการมา-ลา</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">เกณฑ์คะแนนการมา-ลา</h2>
+          <p className="text-xs text-muted mb-3">
             แต่ละหมวดคะแนนเต็ม 10 (รวม 4 หมวด = 40) ให้คะแนนตามช่วงที่จำนวนวัน/ครั้งจริงตกอยู่ — ไม่ใช่การหักคะแนนต่อหน่วย
             เช่น ลาป่วย 3 วันอาจยังได้เต็ม 10 ถ้าอยู่ในช่วงที่กำหนดไว้ ปรับช่วง/คะแนนได้ตามนโยบายบริษัทจริงทีละหมวด
             ต้องกรอกให้ครอบคลุมตั้งแต่ 0 ถึงไม่จำกัด (ช่วงสุดท้ายเว้นช่อง "ถึง" ว่างไว้) โดยไม่มีช่องว่างหรือช่วงทับซ้อนกัน
@@ -463,8 +463,8 @@ export default function People() {
         )}
 
         {tab === 'branches' && (
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">สาขา</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">สาขา</h2>
           <ul className="divide-y mb-3">
             {branches.map((b) => (
               <li key={b.id} className="flex items-center justify-between py-2 text-sm gap-2">
@@ -472,57 +472,57 @@ export default function People() {
                   <>
                     <input className="border rounded px-2 py-1 flex-1" value={renaming.name}
                       onChange={(e) => setRenaming({ id: b.id, name: e.target.value })} />
-                    <button onClick={saveBranchRename} disabled={busy} className="text-blue-600 text-xs font-medium disabled:opacity-50">บันทึก</button>
-                    <button onClick={() => setRenaming(null)} className="text-slate-400 text-xs">ยกเลิก</button>
+                    <button onClick={saveBranchRename} disabled={busy} className="text-primary text-xs font-medium disabled:opacity-50">บันทึก</button>
+                    <button onClick={() => setRenaming(null)} className="text-faint text-xs">ยกเลิก</button>
                   </>
                 ) : (
                   <>
                     <span>{b.name}</span>
-                    <button onClick={() => setRenaming({ id: b.id, name: b.name })} className="text-blue-600 text-xs font-medium">แก้ไข</button>
+                    <button onClick={() => setRenaming({ id: b.id, name: b.name })} className="text-primary text-xs font-medium">แก้ไข</button>
                   </>
                 )}
               </li>
             ))}
-            {branches.length === 0 && <li className="py-2 text-slate-400 text-sm">ยังไม่มีสาขา</li>}
+            {branches.length === 0 && <li className="py-2 text-faint text-sm">ยังไม่มีสาขา</li>}
           </ul>
           <div className="flex gap-2">
             <input className="border rounded px-2 py-1 text-sm flex-1" placeholder="ชื่อสาขาใหม่"
               value={newBranch} onChange={(e) => setNewBranch(e.target.value)} />
             <button onClick={addBranch} disabled={busy || !newBranch.trim()}
-              className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">เพิ่มสาขา</button>
+              className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">เพิ่มสาขา</button>
           </div>
         </section>
         )}
 
         {tab === 'employees' && (
         <>
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">{editingId ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงาน'}</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">{editingId ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงาน'}</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <label>
-              <span className="block text-slate-500 mb-0.5">รหัสพนักงาน</span>
+              <span className="block text-muted mb-0.5">รหัสพนักงาน</span>
               <input className="border rounded px-2 py-1 w-full" value={form.emp_code}
                 onChange={(e) => setForm((f) => ({ ...f, emp_code: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">ชื่อ-นามสกุล</span>
+              <span className="block text-muted mb-0.5">ชื่อ-นามสกุล</span>
               <input className="border rounded px-2 py-1 w-full" value={form.full_name}
                 onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">ตำแหน่ง</span>
+              <span className="block text-muted mb-0.5">ตำแหน่ง</span>
               <input className="border rounded px-2 py-1 w-full" value={form.position}
                 onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">
+              <span className="block text-muted mb-0.5">
                 อีเมล (รับสลิป/ยืนยันตัวตน)
               </span>
               <input type="email" className="border rounded px-2 py-1 w-full" value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">ประเภทแบบประเมิน</span>
+              <span className="block text-muted mb-0.5">ประเภทแบบประเมิน</span>
               <select className="border rounded px-2 py-1 w-full" value={form.level}
                 onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}>
                 <option value="operational">{LEVEL_LABEL.operational}</option>
@@ -530,7 +530,7 @@ export default function People() {
               </select>
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">สาขา</span>
+              <span className="block text-muted mb-0.5">สาขา</span>
               <select className="border rounded px-2 py-1 w-full" value={form.branch_id}
                 onChange={(e) => setForm((f) => ({ ...f, branch_id: e.target.value }))}>
                 <option value="">— ไม่ระบุ —</option>
@@ -538,7 +538,7 @@ export default function People() {
               </select>
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">หัวหน้างาน (ผู้ให้คะแนน)</span>
+              <span className="block text-muted mb-0.5">หัวหน้างาน (ผู้ให้คะแนน)</span>
               <select className="border rounded px-2 py-1 w-full" value={form.supervisor_id}
                 onChange={(e) => setForm((f) => ({ ...f, supervisor_id: e.target.value }))}>
                 <option value="">— ไม่ระบุ —</option>
@@ -546,7 +546,7 @@ export default function People() {
               </select>
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">ผจก.แผนก (ผู้อนุมัติชั้นที่ 1)</span>
+              <span className="block text-muted mb-0.5">ผจก.แผนก (ผู้อนุมัติชั้นที่ 1)</span>
               <select className="border rounded px-2 py-1 w-full" value={form.manager_id}
                 onChange={(e) => setForm((f) => ({ ...f, manager_id: e.target.value }))}>
                 <option value="">— ไม่ระบุ —</option>
@@ -556,21 +556,21 @@ export default function People() {
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={submitForm} disabled={busy || !form.emp_code.trim() || !form.full_name.trim()}
-              className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+              className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
               {editingId ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
             </button>
             {editingId && (
-              <button onClick={cancelEdit} className="text-sm text-slate-500 hover:text-slate-700">ยกเลิก</button>
+              <button onClick={cancelEdit} className="text-sm text-muted hover:text-ink">ยกเลิก</button>
             )}
           </div>
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">รายชื่อพนักงาน</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">รายชื่อพนักงาน</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-slate-500 border-b">
+                <tr className="text-left text-muted border-b">
                   <th className="py-1 pr-2 whitespace-nowrap">รหัส</th><th className="pr-2 whitespace-nowrap">ชื่อ</th><th className="pr-2 whitespace-nowrap">ประเภทแบบประเมิน</th>
                   <th className="pr-2 whitespace-nowrap">สาขา</th><th className="pr-2 whitespace-nowrap">หัวหน้า</th><th className="pr-2 whitespace-nowrap">ผจก.แผนก</th>
                   <th className="pr-2 whitespace-nowrap">สถานะ</th><th className="pr-2 whitespace-nowrap">ใบประเมินล่าสุด</th><th></th>
@@ -582,11 +582,11 @@ export default function People() {
                     <td className="py-1.5 pr-2 whitespace-nowrap">{emp.emp_code}</td>
                     <td className="pr-2 whitespace-nowrap">{emp.full_name}</td>
                     <td className="pr-2 whitespace-nowrap">{LEVEL_LABEL[emp.level] ?? emp.level}</td>
-                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.branch_name ?? '—'}</td>
-                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.supervisor_name ?? '—'}</td>
-                    <td className="pr-2 text-slate-500 whitespace-nowrap">{emp.manager_name ?? '—'}</td>
+                    <td className="pr-2 text-muted whitespace-nowrap">{emp.branch_name ?? '—'}</td>
+                    <td className="pr-2 text-muted whitespace-nowrap">{emp.supervisor_name ?? '—'}</td>
+                    <td className="pr-2 text-muted whitespace-nowrap">{emp.manager_name ?? '—'}</td>
                     <td className="pr-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${emp.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${emp.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-muted'}`}>
                         {emp.status === 'active' ? 'ทำงานอยู่' : 'ปิดใช้งาน'}
                       </span>
                     </td>
@@ -594,25 +594,25 @@ export default function People() {
                       {(() => {
                         const latest = latestEvalByEmployee.get(emp.id)
                         return latest ? (
-                          <Link to={`/evaluations/${latest.id}`} className="text-blue-600 hover:text-blue-800 text-xs">
+                          <Link to={`/evaluations/${latest.id}`} className="text-primary hover:text-primary-hover text-xs">
                             {STATUS_LABEL[latest.status] ?? latest.status}
                             {latest.percentage != null ? ` · ${latest.percentage}%` : ''} →
                           </Link>
                         ) : (
-                          <span className="text-slate-300 text-xs">— ไม่มี —</span>
+                          <span className="text-faint text-xs">— ไม่มี —</span>
                         )
                       })()}
                     </td>
                     <td className="whitespace-nowrap">
-                      <button onClick={() => startEdit(emp)} className="text-blue-600 text-xs font-medium mr-2">แก้ไข</button>
-                      <button onClick={() => toggleStatus(emp)} className="text-slate-500 text-xs font-medium">
+                      <button onClick={() => startEdit(emp)} className="text-primary text-xs font-medium mr-2">แก้ไข</button>
+                      <button onClick={() => toggleStatus(emp)} className="text-muted text-xs font-medium">
                         {emp.status === 'active' ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                       </button>
                     </td>
                   </tr>
                 ))}
                 {employees.length === 0 && (
-                  <tr><td colSpan={9} className="py-3 text-slate-400">ยังไม่มีพนักงาน</td></tr>
+                  <tr><td colSpan={9} className="py-3 text-faint">ยังไม่มีพนักงาน</td></tr>
                 )}
               </tbody>
             </table>
@@ -622,25 +622,25 @@ export default function People() {
         )}
 
         {tab === 'users' && (
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">ผู้ใช้ระบบ (บัญชีเข้าสู่ระบบ)</h2>
+          <p className="text-xs text-muted mb-3">
             แยกจาก "พนักงาน" ด้านบน — เฉพาะคนที่ต้องล็อกอินเข้าระบบ (เช่น หัวหน้างานที่ต้องให้คะแนน
             หรือผู้อนุมัติ) เท่านั้นที่ต้องเชิญที่นี่ พนักงานทั่วไปไม่จำเป็นต้องมีบัญชี
           </p>
           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
             <label>
-              <span className="block text-slate-500 mb-0.5">อีเมล</span>
+              <span className="block text-muted mb-0.5">อีเมล</span>
               <input type="email" className="border rounded px-2 py-1 w-full" value={invite.email}
                 onChange={(e) => setInvite((f) => ({ ...f, email: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">รหัสผ่านเริ่มต้น (≥ 8 ตัว)</span>
+              <span className="block text-muted mb-0.5">รหัสผ่านเริ่มต้น (≥ 8 ตัว)</span>
               <input type="text" className="border rounded px-2 py-1 w-full" value={invite.password}
                 onChange={(e) => setInvite((f) => ({ ...f, password: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">บทบาท</span>
+              <span className="block text-muted mb-0.5">บทบาท</span>
               <select className="border rounded px-2 py-1 w-full" value={invite.role}
                 onChange={(e) => setInvite((f) => ({
                   ...f, role: e.target.value,
@@ -651,7 +651,7 @@ export default function People() {
             </label>
             {ROLES_NEEDING_EMPLOYEE.includes(invite.role) && (
               <label>
-                <span className="block text-slate-500 mb-0.5">ผูกกับพนักงาน (จำเป็น — ไม่งั้นให้คะแนน/อนุมัติไม่ได้)</span>
+                <span className="block text-muted mb-0.5">ผูกกับพนักงาน (จำเป็น — ไม่งั้นให้คะแนน/อนุมัติไม่ได้)</span>
                 <select className="border rounded px-2 py-1 w-full" value={invite.employee_id}
                   onChange={(e) => setInvite((f) => ({ ...f, employee_id: e.target.value }))}>
                   <option value="">— เลือกพนักงาน —</option>
@@ -661,13 +661,13 @@ export default function People() {
             )}
           </div>
           <button onClick={sendInvite} disabled={busy || !invite.email.trim() || invite.password.length < 8}
-            className="bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+            className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
             เชิญเข้าระบบ
           </button>
 
           <table className="w-full text-sm mt-4">
             <thead>
-              <tr className="text-left text-slate-500 border-b">
+              <tr className="text-left text-muted border-b">
                 <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th><th>พนักงานที่ผูก</th><th>สถานะ</th><th></th>
               </tr>
             </thead>
@@ -684,7 +684,7 @@ export default function People() {
                           onClick={() => revokeRole(u, r)}
                           disabled={busy}
                           title={`ถอดบทบาท ${ROLE_LABEL[r] ?? r}`}
-                          className="text-slate-400 hover:text-red-600 disabled:opacity-50 leading-none"
+                          className="text-faint hover:text-danger disabled:opacity-50 leading-none"
                         >
                           ×
                         </button>
@@ -702,19 +702,19 @@ export default function People() {
                     )}
                   </td>
                   <td>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-muted'}`}>
                       {u.active ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
                     </span>
                   </td>
                   <td className="whitespace-nowrap">
-                    <button onClick={() => toggleUserStatus(u)} disabled={busy} className="text-slate-500 text-xs font-medium disabled:opacity-50">
+                    <button onClick={() => toggleUserStatus(u)} disabled={busy} className="text-muted text-xs font-medium disabled:opacity-50">
                       {u.active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                     </button>
                   </td>
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={5} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
+                <tr><td colSpan={5} className="py-3 text-faint">ยังไม่มีผู้ใช้</td></tr>
               )}
             </tbody>
           </table>

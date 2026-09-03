@@ -116,39 +116,39 @@ export default function EvaluationDetail() {
 
   if (!ev) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        {error ? <p className="text-red-600">{error}</p> : <p className="text-slate-500">กำลังโหลด…</p>}
+      <div className="min-h-screen bg-canvas p-6">
+        {error ? <p className="text-danger">{error}</p> : <p className="text-muted">กำลังโหลด…</p>}
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title="รายละเอียดใบประเมิน" />
 
       <main className="p-6 space-y-5 max-w-3xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5 space-y-3">
+        <section className="bg-surface rounded-card shadow p-5 space-y-3">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-3">
-            <h2 className="text-lg font-semibold text-slate-800">
+            <h2 className="text-lg font-semibold text-ink">
               {ev.employee_name ?? 'พนักงาน'}
             </h2>
-            {ev.employee_code && <span className="text-sm text-slate-500">รหัส {ev.employee_code}</span>}
-            {ev.employee_position && <span className="text-sm text-slate-500">· {ev.employee_position}</span>}
+            {ev.employee_code && <span className="text-sm text-muted">รหัส {ev.employee_code}</span>}
+            {ev.employee_position && <span className="text-sm text-muted">· {ev.employee_position}</span>}
           </div>
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm items-center">
-          <div><span className="text-slate-500">สถานะ:</span> <b>{STATUS_LABEL[ev.status] ?? ev.status}</b></div>
-          <div><span className="text-slate-500">ชนิด:</span> {ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
-          <div><span className="text-slate-500">ผู้ให้คะแนน:</span> {ev.evaluator_name ?? '—'}</div>
-          <div><span className="text-slate-500">ผู้อนุมัติชั้น 1:</span> {ev.dept_manager_name ?? '—'}</div>
-          <div><span className="text-slate-500">คะแนน:</span> {ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</div>
-          <div><span className="text-slate-500">รวม+มาลา:</span> {ev.total_score ?? '—'}</div>
-          <div><span className="text-slate-500">คิดเป็น:</span> {ev.percentage != null ? `${ev.percentage}%` : '—'}</div>
+          <div><span className="text-muted">สถานะ:</span> <b>{STATUS_LABEL[ev.status] ?? ev.status}</b></div>
+          <div><span className="text-muted">ชนิด:</span> {ev.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
+          <div><span className="text-muted">ผู้ให้คะแนน:</span> {ev.evaluator_name ?? '—'}</div>
+          <div><span className="text-muted">ผู้อนุมัติชั้น 1:</span> {ev.dept_manager_name ?? '—'}</div>
+          <div><span className="text-muted">คะแนน:</span> {ev.eval_score ?? '—'}{ev.eval_max ? ` / ${ev.eval_max}` : ''}</div>
+          <div><span className="text-muted">รวม+มาลา:</span> {ev.total_score ?? '—'}</div>
+          <div><span className="text-muted">คิดเป็น:</span> {ev.percentage != null ? `${ev.percentage}%` : '—'}</div>
           <button
             onClick={() => apiDownload(`/api/evaluations/${id}/pdf`, `evaluation-${id}.pdf`).catch((e) => setError(String(e)))}
-            className="ml-auto text-sm text-blue-600 hover:text-blue-800">ดาวน์โหลด PDF</button>
+            className="ml-auto text-sm text-primary hover:text-primary-hover">ดาวน์โหลด PDF</button>
           </div>
 
           <div className="flex items-start max-w-md">
@@ -161,10 +161,10 @@ export default function EvaluationDetail() {
                   <div className="flex flex-col items-center gap-1">
                     <span className={
                       done ? 'w-2.5 h-2.5 rounded-full bg-green-500'
-                        : current ? 'w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100'
+                        : current ? 'w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-blue-100'
                           : 'w-2.5 h-2.5 rounded-full bg-slate-200'
                     } />
-                    <span className={current ? 'text-[10px] text-blue-700 font-medium whitespace-nowrap' : 'text-[10px] text-slate-400 whitespace-nowrap'}>
+                    <span className={current ? 'text-[10px] text-primary font-medium whitespace-nowrap' : 'text-[10px] text-faint whitespace-nowrap'}>
                       {label}
                     </span>
                   </div>
@@ -177,15 +177,15 @@ export default function EvaluationDetail() {
           </div>
         </section>
 
-        <section className="sticky top-2 z-10 bg-white rounded-xl shadow-md border border-slate-200 px-4 py-2.5 flex flex-wrap items-center gap-3">
-          <span className="text-sm text-slate-600 truncate">
-            {ev.employee_name ?? 'พนักงาน'} <span className="text-slate-400">· {STATUS_LABEL[ev.status] ?? ev.status}</span>
+        <section className="sticky top-2 z-10 bg-surface rounded-card shadow-md border border-line px-4 py-2.5 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-muted truncate">
+            {ev.employee_name ?? 'พนักงาน'} <span className="text-faint">· {STATUS_LABEL[ev.status] ?? ev.status}</span>
           </span>
           <div className="flex flex-wrap gap-2 items-center ml-auto">
             {canEditNow && (
               <>
-                <button onClick={save} disabled={busy} className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกคะแนน</button>
-                <button onClick={() => transition('submit', 'ส่งประเมินแล้ว')} disabled={busy} className="bg-blue-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50">ส่งประเมิน</button>
+                <button onClick={save} disabled={busy} className="bg-primary text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกคะแนน</button>
+                <button onClick={() => transition('submit', 'ส่งประเมินแล้ว')} disabled={busy} className="bg-primary text-white rounded px-4 py-2 text-sm disabled:opacity-50">ส่งประเมิน</button>
               </>
             )}
             {ev.status === 'submitted' && isDeptApprover && (
@@ -214,25 +214,25 @@ export default function EvaluationDetail() {
               </>
             )}
             {editable && !isEvaluator && (
-              <p className="text-sm text-slate-400">รอหัวหน้างานที่ได้รับมอบหมายให้คะแนน</p>
+              <p className="text-sm text-faint">รอหัวหน้างานที่ได้รับมอบหมายให้คะแนน</p>
             )}
             {ev.status === 'submitted' && !isDeptApprover && (
-              <p className="text-sm text-slate-400">รอผจก.แผนกอนุมัติ</p>
+              <p className="text-sm text-faint">รอผจก.แผนกอนุมัติ</p>
             )}
             {ev.status === 'dept_approved' && !isMd && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-faint">
                 {ev.acknowledgement ? 'รอ GM/MD อนุมัติ' : 'รอพนักงานลงนามรับทราบ ก่อนส่งให้ GM/MD อนุมัติ'}
               </p>
             )}
             {ev.status === 'md_approved' && !isHr && (
-              <p className="text-sm text-slate-400">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
+              <p className="text-sm text-faint">รอฝ่ายบุคคลสรุป/ปิดใบ</p>
             )}
           </div>
         </section>
 
         {categories.map(([order, cat]) => (
-          <section key={order} className="bg-white rounded-xl shadow p-5">
-            <h3 className="font-medium text-slate-700 mb-2">{order}. {cat.name}</h3>
+          <section key={order} className="bg-surface rounded-card shadow p-5">
+            <h3 className="font-medium text-ink mb-2">{order}. {cat.name}</h3>
             <div className="space-y-3">
               {cat.items.map((it) => {
                 const anchors = [it.desc_5, it.desc_4, it.desc_3, it.desc_2, it.desc_1] // level 5..1
@@ -241,7 +241,7 @@ export default function EvaluationDetail() {
                 return (
                   <div key={it.id} className="text-sm">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-600">{it.item_name}</span>
+                      <span className="text-muted">{it.item_name}</span>
                       <select
                         className="border rounded px-2 py-1 w-20 disabled:bg-slate-100"
                         disabled={!canEditNow}
@@ -254,7 +254,7 @@ export default function EvaluationDetail() {
                     </div>
                     {hasAnchors && (
                       <details className="mt-1 group" open>
-                        <summary className="text-xs text-blue-600 cursor-pointer select-none list-none">
+                        <summary className="text-xs text-primary cursor-pointer select-none list-none">
                           เกณฑ์การให้คะแนน (BARS) ▴
                         </summary>
                         <ul className="mt-1 space-y-0.5 pl-1">
@@ -262,7 +262,7 @@ export default function EvaluationDetail() {
                             const level = 5 - i
                             const active = sel != null && (Math.floor(sel) === level || Math.ceil(sel) === level)
                             return (
-                              <li key={level} className={`flex gap-2 text-xs rounded px-1 py-0.5 ${active ? 'bg-blue-50 text-blue-800' : 'text-slate-500'}`}>
+                              <li key={level} className={`flex gap-2 text-xs rounded px-1 py-0.5 ${active ? 'bg-primary-soft text-primary-hover' : 'text-muted'}`}>
                                 <span className="font-medium tabular-nums">{level}</span>
                                 <span>{a ?? '—'}</span>
                               </li>
@@ -286,63 +286,63 @@ export default function EvaluationDetail() {
           </section>
         ))}
 
-        <section className="bg-white rounded-xl shadow p-5 text-sm">
-          <h3 className="font-medium text-slate-700 mb-2">คะแนนการมา-ลา (เต็ม 40)</h3>
-          <p className="text-slate-600">
+        <section className="bg-surface rounded-card shadow p-5 text-sm">
+          <h3 className="font-medium text-ink mb-2">คะแนนการมา-ลา (เต็ม 40)</h3>
+          <p className="text-muted">
             คะแนน: <b>{ev.attendance?.attendance_score ?? '—'}</b> / 40
             {ev.attendance?.attendance_score_overridden && (
               <span className="ml-2 text-xs text-amber-600">(ปรับโดย HR)</span>
             )}
           </p>
           {ev.attendance && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-faint mt-1">
               ลาป่วย {ev.attendance.sick_days} วัน · ลากิจ {ev.attendance.personal_days} วัน ·
               {' '}สาย {ev.attendance.late_count} ครั้ง ({ev.attendance.late_minutes} นาที) ·
               {' '}ขาดงาน {ev.attendance.absent_days} วัน
             </p>
           )}
-          <p className="text-xs text-slate-400 mt-1">ข้อมูลนี้กรอกโดยฝ่ายบุคคล หัวหน้างานดูได้อย่างเดียว</p>
+          <p className="text-xs text-faint mt-1">ข้อมูลนี้กรอกโดยฝ่ายบุคคล หัวหน้างานดูได้อย่างเดียว</p>
 
           {isHr && ev.status !== 'finalized' && (
             <div className="mt-4 border-t pt-3 space-y-2">
-              <p className="text-xs font-medium text-slate-500">แก้ไขข้อมูลการมา-ลา (ฝ่ายบุคคล)</p>
+              <p className="text-xs font-medium text-muted">แก้ไขข้อมูลการมา-ลา (ฝ่ายบุคคล)</p>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                <label className="text-xs text-slate-500">ลาป่วย (วัน)
+                <label className="text-xs text-muted">ลาป่วย (วัน)
                   <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
                     value={att.sick_days} onChange={(e) => setAtt((a) => ({ ...a, sick_days: Number(e.target.value) }))} />
                 </label>
-                <label className="text-xs text-slate-500">ลากิจ (วัน)
+                <label className="text-xs text-muted">ลากิจ (วัน)
                   <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
                     value={att.personal_days} onChange={(e) => setAtt((a) => ({ ...a, personal_days: Number(e.target.value) }))} />
                 </label>
-                <label className="text-xs text-slate-500">สาย (ครั้ง)
+                <label className="text-xs text-muted">สาย (ครั้ง)
                   <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
                     value={att.late_count} onChange={(e) => setAtt((a) => ({ ...a, late_count: Number(e.target.value) }))} />
                 </label>
-                <label className="text-xs text-slate-500">สาย (นาทีรวม)
+                <label className="text-xs text-muted">สาย (นาทีรวม)
                   <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
                     value={att.late_minutes} onChange={(e) => setAtt((a) => ({ ...a, late_minutes: Number(e.target.value) }))} />
                 </label>
-                <label className="text-xs text-slate-500">ขาดงาน (วัน)
+                <label className="text-xs text-muted">ขาดงาน (วัน)
                   <input type="number" min={0} className="border rounded px-2 py-1 w-full mt-0.5"
                     value={att.absent_days} onChange={(e) => setAtt((a) => ({ ...a, absent_days: Number(e.target.value) }))} />
                 </label>
               </div>
-              <label className="text-xs text-slate-500 block">
+              <label className="text-xs text-muted block">
                 ปรับคะแนนเอง (เว้นว่าง = คำนวณอัตโนมัติจากข้อมูลด้านบน)
                 <input type="number" min={0} max={40} className="border rounded px-2 py-1 w-28 ml-2"
                   value={attOverride} onChange={(e) => setAttOverride(e.target.value === '' ? '' : Number(e.target.value))} />
               </label>
               <button onClick={saveAttendance} disabled={busy}
-                className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกข้อมูลการมา-ลา</button>
+                className="bg-primary text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกข้อมูลการมา-ลา</button>
             </div>
           )}
         </section>
 
         {ev.approvals.length > 0 && (
-          <section className="bg-white rounded-xl shadow p-5 text-sm">
-            <h3 className="font-medium text-slate-700 mb-2">ประวัติอนุมัติ</h3>
-            <ul className="space-y-1 text-slate-600">
+          <section className="bg-surface rounded-card shadow p-5 text-sm">
+            <h3 className="font-medium text-ink mb-2">ประวัติอนุมัติ</h3>
+            <ul className="space-y-1 text-muted">
               {ev.approvals.map((a, i) => (
                 <li key={i}>{a.step} — {a.decision === 'approved' ? 'อนุมัติ' : 'ตีกลับ'}{a.comment ? ` (${a.comment})` : ''}</li>
               ))}
@@ -351,37 +351,37 @@ export default function EvaluationDetail() {
         )}
 
         {showAckSection && (
-          <section className="bg-white rounded-xl shadow p-5 text-sm">
-            <h3 className="font-medium text-slate-700 mb-2">การรับทราบของพนักงาน</h3>
+          <section className="bg-surface rounded-card shadow p-5 text-sm">
+            <h3 className="font-medium text-ink mb-2">การรับทราบของพนักงาน</h3>
 
             {ev.acknowledgement ? (
-              <div className="space-y-1 text-slate-600">
+              <div className="space-y-1 text-muted">
                 <p>
                   <b>{ACK_DECISION_LABEL[ev.acknowledgement.decision] ?? ev.acknowledgement.decision}</b>
                   {' '}· {ev.acknowledgement.method === 'paper' ? 'ลงนามในเอกสาร' : 'ลงนามทางระบบ'}
                   {' '}เมื่อ {new Date(ev.acknowledgement.signed_at).toLocaleDateString('th-TH')}
                 </p>
                 {ev.acknowledgement.witness_name && (
-                  <p className="text-xs text-slate-400">พยาน: {ev.acknowledgement.witness_name}</p>
+                  <p className="text-xs text-faint">พยาน: {ev.acknowledgement.witness_name}</p>
                 )}
                 {ev.acknowledgement.comment && (
-                  <p className="text-xs text-slate-500">ความเห็นของผู้ถูกประเมิน: {ev.acknowledgement.comment}</p>
+                  <p className="text-xs text-muted">ความเห็นของผู้ถูกประเมิน: {ev.acknowledgement.comment}</p>
                 )}
                 {ev.acknowledgement.attachment_path && (
                   <button
                     onClick={() => apiDownload(`/api/evaluations/${id}/acknowledgement-attachment`, `acknowledgement-${id}`).catch((e) => setError(String(e)))}
-                    className="text-xs text-blue-600 hover:text-blue-800">ดาวน์โหลดไฟล์แนบ</button>
+                    className="text-xs text-primary hover:text-primary-hover">ดาวน์โหลดไฟล์แนบ</button>
                 )}
               </div>
             ) : ev.status === 'dept_approved' && canRecordAck ? (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   กด "ดาวน์โหลด PDF" ด้านบนเพื่อพิมพ์ให้พนักงานลงนาม แล้วบันทึกผลกลับเข้าระบบที่นี่ —
                   <b> GM/MD จะอนุมัติขั้นถัดไปได้ก็ต่อเมื่อบันทึกการรับทราบแล้ว</b>
                   {' '}(ระบบรับทราบทางอีเมลจะเปิดใช้ในเฟสถัดไป)
                 </p>
                 <div className="flex flex-wrap gap-2 items-end">
-                  <label className="text-xs text-slate-500">ผลการลงนาม
+                  <label className="text-xs text-muted">ผลการลงนาม
                     <select className="border rounded px-2 py-1 block mt-0.5"
                       value={ackForm.decision}
                       onChange={(e) => setAckForm((f) => ({ ...f, decision: e.target.value }))}>
@@ -390,19 +390,19 @@ export default function EvaluationDetail() {
                       <option value="refused">ปฏิเสธการลงนาม</option>
                     </select>
                   </label>
-                  <label className="text-xs text-slate-500">วันที่ลงนาม
+                  <label className="text-xs text-muted">วันที่ลงนาม
                     <input type="date" className="border rounded px-2 py-1 block mt-0.5"
                       value={ackForm.signed_at}
                       onChange={(e) => setAckForm((f) => ({ ...f, signed_at: e.target.value }))} />
                   </label>
                   {ackForm.decision === 'refused' && (
-                    <label className="text-xs text-slate-500">ชื่อพยาน
+                    <label className="text-xs text-muted">ชื่อพยาน
                       <input className="border rounded px-2 py-1 block mt-0.5"
                         value={ackForm.witness_name}
                         onChange={(e) => setAckForm((f) => ({ ...f, witness_name: e.target.value }))} />
                     </label>
                   )}
-                  <label className="text-xs text-slate-500">ไฟล์แนบ (สแกน)
+                  <label className="text-xs text-muted">ไฟล์แนบ (สแกน)
                     <input type="file" className="block mt-0.5 text-xs"
                       onChange={(e) => setAckFile(e.target.files?.[0] ?? null)} />
                   </label>
@@ -415,14 +415,14 @@ export default function EvaluationDetail() {
                   onChange={(e) => setAckForm((f) => ({ ...f, comment: e.target.value }))}
                 />
                 <button onClick={saveAcknowledgement} disabled={busy}
-                  className="bg-slate-700 text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกการรับทราบ</button>
+                  className="bg-primary text-white rounded px-4 py-2 text-sm disabled:opacity-50">บันทึกการรับทราบ</button>
               </div>
             ) : ev.status === 'dept_approved' ? (
-              <p className="text-slate-400">
+              <p className="text-faint">
                 รอหัวหน้างาน/ผจก.แผนก/ฝ่ายบุคคล พิมพ์เอกสารให้พนักงานลงนามและบันทึกผล
               </p>
             ) : (
-              <p className="text-slate-400">ยังไม่มีบันทึกการรับทราบ</p>
+              <p className="text-faint">ยังไม่มีบันทึกการรับทราบ</p>
             )}
           </section>
         )}

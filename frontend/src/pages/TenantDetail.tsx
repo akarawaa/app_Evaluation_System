@@ -86,26 +86,26 @@ export default function TenantDetail() {
 
   if (!tenant) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        {error ? <p className="text-red-600">{error}</p> : <p className="text-slate-500">กำลังโหลด…</p>}
+      <div className="min-h-screen bg-canvas p-6">
+        {error ? <p className="text-danger">{error}</p> : <p className="text-muted">กำลังโหลด…</p>}
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title={tenant.name} />
 
       <main className="p-6 space-y-6 max-w-3xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
         {msg && <p className="text-green-700 text-sm">{msg}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5 flex items-center justify-between">
+        <section className="bg-surface rounded-card shadow p-5 flex items-center justify-between">
           <div className="text-sm space-y-1">
-            <div><span className="text-slate-500">slug:</span> {tenant.slug}</div>
+            <div><span className="text-muted">slug:</span> {tenant.slug}</div>
             <div>
-              <span className="text-slate-500">สถานะ:</span>{' '}
-              <span className={`text-xs px-2 py-0.5 rounded-full ${tenant.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              <span className="text-muted">สถานะ:</span>{' '}
+              <span className={`text-xs px-2 py-0.5 rounded-full ${tenant.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-danger-soft text-danger'}`}>
                 {tenant.status === 'active' ? 'ใช้งานอยู่' : 'ระงับการใช้งาน'}
               </span>
             </div>
@@ -113,32 +113,32 @@ export default function TenantDetail() {
           <div className="flex items-center gap-3">
             <Link
               to={`/people?company_id=${tenant.id}&company_name=${encodeURIComponent(tenant.name)}`}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              className="text-sm text-primary hover:text-primary-hover font-medium"
             >
               จัดการพนักงาน & สาขาของบริษัทนี้ →
             </Link>
             <button onClick={toggleStatus} disabled={busy}
-              className={`text-sm rounded px-4 py-1.5 text-white disabled:opacity-50 ${tenant.status === 'active' ? 'bg-red-600' : 'bg-green-600'}`}>
+              className={`text-sm rounded px-4 py-1.5 text-white disabled:opacity-50 ${tenant.status === 'active' ? 'bg-danger' : 'bg-green-600'}`}>
               {tenant.status === 'active' ? 'ระงับการใช้งาน' : 'เปิดใช้งานอีกครั้ง'}
             </button>
           </div>
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">เชิญผู้ใช้เข้าระบบ</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">เชิญผู้ใช้เข้าระบบ</h2>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <label>
-              <span className="block text-slate-500 mb-0.5">อีเมล</span>
+              <span className="block text-muted mb-0.5">อีเมล</span>
               <input type="email" className="border rounded px-2 py-1 w-full" value={invite.email}
                 onChange={(e) => setInvite((f) => ({ ...f, email: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">รหัสผ่านเริ่มต้น (≥ 8 ตัว)</span>
+              <span className="block text-muted mb-0.5">รหัสผ่านเริ่มต้น (≥ 8 ตัว)</span>
               <input type="text" className="border rounded px-2 py-1 w-full" value={invite.password}
                 onChange={(e) => setInvite((f) => ({ ...f, password: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">บทบาท</span>
+              <span className="block text-muted mb-0.5">บทบาท</span>
               <select className="border rounded px-2 py-1 w-full" value={invite.role}
                 onChange={(e) => setInvite((f) => ({ ...f, role: e.target.value }))}>
                 {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -146,24 +146,24 @@ export default function TenantDetail() {
             </label>
           </div>
           <button onClick={sendInvite} disabled={busy || !invite.email.trim() || invite.password.length < 8}
-            className="mt-4 bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+            className="mt-4 bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
             เชิญเข้าระบบ
           </button>
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">ให้สิทธิ์ผู้ใช้เดิมเข้าบริษัทนี้</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">ให้สิทธิ์ผู้ใช้เดิมเข้าบริษัทนี้</h2>
+          <p className="text-xs text-muted mb-3">
             สำหรับคนที่มีบัญชี login อยู่แล้ว (เช่น ดูแลหลายบริษัท) — ไม่สร้างบัญชีใหม่ แค่เพิ่มสิทธิ์ในบริษัทนี้
           </p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <label>
-              <span className="block text-slate-500 mb-0.5">อีเมลบัญชีที่มีอยู่แล้ว</span>
+              <span className="block text-muted mb-0.5">อีเมลบัญชีที่มีอยู่แล้ว</span>
               <input type="email" className="border rounded px-2 py-1 w-full" value={grant.email}
                 onChange={(e) => setGrant((f) => ({ ...f, email: e.target.value }))} />
             </label>
             <label>
-              <span className="block text-slate-500 mb-0.5">บทบาทในบริษัทนี้</span>
+              <span className="block text-muted mb-0.5">บทบาทในบริษัทนี้</span>
               <select className="border rounded px-2 py-1 w-full" value={grant.role}
                 onChange={(e) => setGrant((f) => ({ ...f, role: e.target.value }))}>
                 {INVITE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -171,16 +171,16 @@ export default function TenantDetail() {
             </label>
           </div>
           <button onClick={sendGrant} disabled={busy || !grant.email.trim()}
-            className="mt-4 bg-slate-800 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+            className="mt-4 bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
             ให้สิทธิ์เข้าบริษัทนี้
           </button>
         </section>
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-3 text-slate-700">ผู้ใช้ในบริษัทนี้</h2>
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-3 text-ink">ผู้ใช้ในบริษัทนี้</h2>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-slate-500 border-b">
+              <tr className="text-left text-muted border-b">
                 <th className="py-1 pr-2">ชื่อที่แสดง</th><th>บทบาท</th><th>สถานะ</th><th></th>
               </tr>
             </thead>
@@ -190,19 +190,19 @@ export default function TenantDetail() {
                   <td className="py-1.5 pr-2">{u.display_name ?? '—'}</td>
                   <td>{u.roles.map((r) => ROLE_LABEL[r] ?? r).join(', ') || '—'}</td>
                   <td>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.active ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-muted'}`}>
                       {u.active ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
                     </span>
                   </td>
                   <td className="whitespace-nowrap">
-                    <button onClick={() => toggleUserStatus(u)} disabled={busy} className="text-slate-500 text-xs font-medium disabled:opacity-50">
+                    <button onClick={() => toggleUserStatus(u)} disabled={busy} className="text-muted text-xs font-medium disabled:opacity-50">
                       {u.active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
                     </button>
                   </td>
                 </tr>
               ))}
               {tenant.users.length === 0 && (
-                <tr><td colSpan={4} className="py-3 text-slate-400">ยังไม่มีผู้ใช้</td></tr>
+                <tr><td colSpan={4} className="py-3 text-faint">ยังไม่มีผู้ใช้</td></tr>
               )}
             </tbody>
           </table>
