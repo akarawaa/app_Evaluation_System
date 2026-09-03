@@ -52,29 +52,29 @@ export default function Compare() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title="เปรียบเทียบผลประเมิน" />
 
       <main className="p-6 space-y-6 max-w-5xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-medium mb-1 text-slate-700">เลือกใบประเมินที่จะเปรียบเทียบ ({MIN_SELECT}-{MAX_SELECT} ใบ)</h2>
-          <p className="text-xs text-slate-500 mb-3">
+        <section className="bg-surface rounded-card shadow p-5">
+          <h2 className="font-medium mb-1 text-ink">เลือกใบประเมินที่จะเปรียบเทียบ ({MIN_SELECT}-{MAX_SELECT} ใบ)</h2>
+          <p className="text-xs text-muted mb-3">
             เลือกได้ทั้งสองแบบ: <b>เทียบพนักงานหลายคนในรอบเดียวกัน</b> (เลือกคนละ 1 ใบ) หรือ
             {' '}<b>เทียบพนักงานคนเดียวกันข้ามหลายรอบ</b> (เลือกใบของคนเดียวกันหลายใบ) — เห็นเฉพาะใบที่มีสิทธิ์ดูเท่านั้น
           </p>
           <div className="max-h-72 overflow-y-auto border rounded">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50">
-                <tr className="text-left text-slate-500 border-b">
+              <thead className="sticky top-0 bg-canvas">
+                <tr className="text-left text-muted border-b">
                   <th className="py-1 px-2 w-8"></th>
                   <th className="px-2">พนักงาน</th><th>ชนิด</th><th>สถานะ</th><th>%</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedEvals.map((ev) => (
-                  <tr key={ev.id} className="border-b last:border-0 hover:bg-slate-50 cursor-pointer"
+                  <tr key={ev.id} className="border-b last:border-0 hover:bg-canvas cursor-pointer"
                       onClick={() => toggle(ev.id)}>
                     <td className="py-1.5 px-2">
                       <input type="checkbox" checked={selected.includes(ev.id)}
@@ -88,31 +88,31 @@ export default function Compare() {
                   </tr>
                 ))}
                 {sortedEvals.length === 0 && (
-                  <tr><td colSpan={5} className="py-3 text-center text-slate-400">ยังไม่มีใบประเมิน</td></tr>
+                  <tr><td colSpan={5} className="py-3 text-center text-faint">ยังไม่มีใบประเมิน</td></tr>
                 )}
               </tbody>
             </table>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button onClick={compare} disabled={busy || selected.length < MIN_SELECT || selected.length > MAX_SELECT}
-              className="bg-blue-600 text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
+              className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">
               {busy ? 'กำลังเปรียบเทียบ…' : `เปรียบเทียบ (${selected.length} ใบ)`}
             </button>
-            <span className="text-xs text-slate-400">เลือกแล้ว {selected.length}/{MAX_SELECT}</span>
+            <span className="text-xs text-faint">เลือกแล้ว {selected.length}/{MAX_SELECT}</span>
           </div>
         </section>
 
         {result && (
-          <section className="bg-white rounded-xl shadow p-5 overflow-x-auto">
-            <h2 className="font-medium mb-3 text-slate-700">ผลเปรียบเทียบ</h2>
+          <section className="bg-surface rounded-card shadow p-5 overflow-x-auto">
+            <h2 className="font-medium mb-3 text-ink">ผลเปรียบเทียบ</h2>
             <table className="text-sm border-collapse min-w-full">
               <thead>
                 <tr>
-                  <th className="text-left text-slate-500 border-b py-1 pr-3 sticky left-0 bg-white">หัวข้อ</th>
+                  <th className="text-left text-muted border-b py-1 pr-3 sticky left-0 bg-surface">หัวข้อ</th>
                   {result.columns.map((c) => (
-                    <th key={c.evaluation_id} className="text-left text-slate-700 border-b py-1 px-3 min-w-40">
+                    <th key={c.evaluation_id} className="text-left text-ink border-b py-1 px-3 min-w-40">
                       <div className="font-medium">{c.emp_code} · {c.full_name}</div>
-                      <div className="text-xs text-slate-400 font-normal">
+                      <div className="text-xs text-faint font-normal">
                         {c.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'} · {STATUS_LABEL[c.status] ?? c.status} · {c.created_at}
                       </div>
                     </th>
@@ -120,20 +120,20 @@ export default function Compare() {
                 </tr>
               </thead>
               <tbody>
-                <tr className="bg-slate-50 font-medium">
-                  <td className="py-1.5 pr-3 sticky left-0 bg-slate-50">คะแนนประเมิน</td>
+                <tr className="bg-canvas font-medium">
+                  <td className="py-1.5 pr-3 sticky left-0 bg-canvas">คะแนนประเมิน</td>
                   {result.columns.map((c) => (
                     <td key={c.evaluation_id} className="px-3">{c.eval_score ?? '—'} / {c.eval_max ?? '—'}</td>
                   ))}
                 </tr>
-                <tr className="bg-slate-50 font-medium">
-                  <td className="py-1.5 pr-3 sticky left-0 bg-slate-50">คะแนนการมา-ลา</td>
+                <tr className="bg-canvas font-medium">
+                  <td className="py-1.5 pr-3 sticky left-0 bg-canvas">คะแนนการมา-ลา</td>
                   {result.columns.map((c) => (
                     <td key={c.evaluation_id} className="px-3">{c.attendance_score ?? '—'} / 40</td>
                   ))}
                 </tr>
-                <tr className="bg-slate-50 font-medium border-b-2">
-                  <td className="py-1.5 pr-3 sticky left-0 bg-slate-50">รวม / ร้อยละ</td>
+                <tr className="bg-canvas font-medium border-b-2">
+                  <td className="py-1.5 pr-3 sticky left-0 bg-canvas">รวม / ร้อยละ</td>
                   {result.columns.map((c) => (
                     <td key={c.evaluation_id} className="px-3">
                       {c.total_score ?? '—'} ({c.percentage != null ? `${c.percentage}%` : '—'})
@@ -142,9 +142,9 @@ export default function Compare() {
                 </tr>
                 {result.rows.map((row, i) => (
                   <tr key={i} className="border-b last:border-0">
-                    <td className="py-1 pr-3 sticky left-0 bg-white">
-                      <div className="text-slate-700">{row.item_name}</div>
-                      <div className="text-xs text-slate-400">{row.category_name}</div>
+                    <td className="py-1 pr-3 sticky left-0 bg-surface">
+                      <div className="text-ink">{row.item_name}</div>
+                      <div className="text-xs text-faint">{row.category_name}</div>
                     </td>
                     {result.columns.map((c) => (
                       <td key={c.evaluation_id} className="px-3">

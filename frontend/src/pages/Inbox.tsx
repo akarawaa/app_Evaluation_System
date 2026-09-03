@@ -7,7 +7,7 @@ import type { InboxAction, InboxItem } from '../types'
 import { ACTION_LABEL } from '../types'
 
 const ACTION_STYLE: Record<InboxAction, string> = {
-  score: 'bg-blue-50 text-blue-700',
+  score: 'bg-primary-soft text-primary',
   dept_approve: 'bg-amber-50 text-amber-700',
   md_approve: 'bg-purple-50 text-purple-700',
   finalize: 'bg-green-50 text-green-700',
@@ -27,28 +27,28 @@ export default function Inbox() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-canvas">
       <AppHeader title="งานที่รอฉัน" />
 
       <main className="p-6 space-y-4 max-w-3xl mx-auto">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p className="text-danger text-sm">{error}</p>}
 
-        <section className="bg-white rounded-xl shadow p-5">
+        <section className="bg-surface rounded-card shadow p-5">
           {loading ? (
-            <p className="text-slate-400 text-sm">กำลังโหลด…</p>
+            <p className="text-faint text-sm">กำลังโหลด…</p>
           ) : items.length === 0 ? (
-            <p className="text-slate-400 text-sm py-2">ไม่มีงานค้างในขณะนี้ 🎉</p>
+            <p className="text-faint text-sm py-2">ไม่มีงานค้างในขณะนี้ 🎉</p>
           ) : (
             <ul className="divide-y">
               {items.map((it) => (
                 <li
                   key={it.id}
                   onClick={() => navigate(`/evaluations/${it.id}`)}
-                  className="flex items-center justify-between gap-3 py-3 cursor-pointer hover:bg-slate-50 -mx-2 px-2 rounded"
+                  className="flex items-center justify-between gap-3 py-3 cursor-pointer hover:bg-canvas -mx-2 px-2 rounded"
                 >
                   <div>
-                    <div className="text-sm font-medium text-slate-800">{it.emp_code} · {it.full_name}</div>
-                    <div className="text-xs text-slate-500">{it.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
+                    <div className="text-sm font-medium text-ink">{it.emp_code} · {it.full_name}</div>
+                    <div className="text-xs text-muted">{it.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'}</div>
                   </div>
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${ACTION_STYLE[it.action]}`}>
                     {ACTION_LABEL[it.action]}
