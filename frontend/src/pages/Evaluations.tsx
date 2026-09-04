@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend } from '../lib/api'
+import { DateInput } from '../shared/ui'
 import type { Employee, EvalDetail, EvalListItem, Template } from '../types'
 import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
@@ -158,11 +159,11 @@ export default function Evaluations() {
             </label>
             <label className="text-sm">
               <span className="block text-muted">ตั้งแต่วันที่</span>
-              <input type="date" className="border rounded px-2 py-1" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
+              <DateInput className="border rounded px-2 py-1 w-32" value={exportFrom} onChange={setExportFrom} />
             </label>
             <label className="text-sm">
               <span className="block text-muted">ถึงวันที่</span>
-              <input type="date" className="border rounded px-2 py-1" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
+              <DateInput className="border rounded px-2 py-1 w-32" value={exportTo} onChange={setExportTo} min={exportFrom} />
             </label>
             <button onClick={exportExcel} disabled={exporting}
               className="bg-primary text-white rounded px-4 py-1.5 text-sm disabled:opacity-50">

@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend, apiSendForm } from '../lib/api'
+import { DateInput } from '../shared/ui'
 import type { EvalDetail } from '../types'
 import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
@@ -391,9 +392,9 @@ export default function EvaluationDetail() {
                     </select>
                   </label>
                   <label className="text-xs text-muted">วันที่ลงนาม
-                    <input type="date" className="border rounded px-2 py-1 block mt-0.5"
+                    <DateInput className="border rounded px-2 py-1 block mt-0.5 w-32"
                       value={ackForm.signed_at}
-                      onChange={(e) => setAckForm((f) => ({ ...f, signed_at: e.target.value }))} />
+                      onChange={(v) => setAckForm((f) => ({ ...f, signed_at: v }))} />
                   </label>
                   {ackForm.decision === 'refused' && (
                     <label className="text-xs text-muted">ชื่อพยาน

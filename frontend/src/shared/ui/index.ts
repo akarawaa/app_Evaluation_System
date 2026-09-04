@@ -1,6 +1,8 @@
 export { AppShell } from './AppShell'
 export { Button } from './Button'
 export { Card } from './Card'
+export { DateInput } from './DateInput'
+export { TimeInput, parseTime } from './TimeInput'
 export { Section } from './Section'
 export { Spinner } from './Spinner'
 export { EmptyState } from './EmptyState'
