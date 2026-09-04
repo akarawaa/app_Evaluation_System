@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import { useAuth } from '../context/AuthContext'
 import { apiDownload, apiGet, apiSend, apiSendForm } from '../lib/api'
-import { DateInput } from '../shared/ui'
+import { DateInput, fmtDate } from '../shared/ui'
 import type { EvalDetail } from '../types'
 import { ACK_DECISION_LABEL, STATUS_LABEL } from '../types'
 
@@ -360,7 +360,7 @@ export default function EvaluationDetail() {
                 <p>
                   <b>{ACK_DECISION_LABEL[ev.acknowledgement.decision] ?? ev.acknowledgement.decision}</b>
                   {' '}· {ev.acknowledgement.method === 'paper' ? 'ลงนามในเอกสาร' : 'ลงนามทางระบบ'}
-                  {' '}เมื่อ {new Date(ev.acknowledgement.signed_at).toLocaleDateString('th-TH')}
+                  {' '}เมื่อ {fmtDate(ev.acknowledgement.signed_at)}
                 </p>
                 {ev.acknowledgement.witness_name && (
                   <p className="text-xs text-faint">พยาน: {ev.acknowledgement.witness_name}</p>

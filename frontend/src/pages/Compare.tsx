@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AppHeader from '../components/AppHeader'
 import { apiGet } from '../lib/api'
+import { fmtDate } from '../shared/ui'
 import type { CompareResult, Employee, EvalListItem } from '../types'
 import { STATUS_LABEL } from '../types'
 
@@ -113,7 +114,7 @@ export default function Compare() {
                     <th key={c.evaluation_id} className="text-left text-ink border-b py-1 px-3 min-w-40">
                       <div className="font-medium">{c.emp_code} · {c.full_name}</div>
                       <div className="text-xs text-faint font-normal">
-                        {c.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'} · {STATUS_LABEL[c.status] ?? c.status} · {c.created_at}
+                        {c.kind === 'annual' ? 'ประจำปี' : 'ทดลองงาน'} · {STATUS_LABEL[c.status] ?? c.status} · {fmtDate(c.created_at)}
                       </div>
                     </th>
                   ))}
