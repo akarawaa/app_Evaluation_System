@@ -18,6 +18,8 @@ type AuthValue = {
   switchCompany: (companyId: string) => Promise<{ error?: string }>
 }
 
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000
+
 const AuthContext = createContext<AuthValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -77,6 +79,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto sign-out after 30 min with no mouse/keyboard/touch activity
+  // (security review 2026-09-05): supabase-js otherwise keeps a session
+  // valid indefinitely via silent refresh, which is fine on a personal
+  // phone/laptop but leaves data exposed on a shared office computer
+  // someone forgot to sign out of. Wall-clock check on an interval, not a
+  // single setTimeout, so a laptop that was asleep/closed for over 30 min
+  // signs out immediately on wake rather than waiting out a timer that
+  // never ran. Kept in lockstep across all 4 HR Suite frontends -- one
+  // shared Supabase project, same policy everywhere (see memory
+  // auto-logout-inactivity).
+  const hasSession = !!session
+  const lastActivity = useRef(Date.now())
+  useEffect(() => {
+    if (!hasSession) return
+    lastActivity.current = Date.now()
+    const markActive = () => {
+      lastActivity.current = Date.now()
+    }
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'] as const
+    events.forEach((e) => window.addEventListener(e, markActive, { passive: true }))
+    const interval = setInterval(() => {
+      if (Date.now() - lastActivity.current >= INACTIVITY_LIMIT_MS) {
+        try {
+          sessionStorage.setItem('auto_logged_out', '1')
+        } catch {
+          /* private mode -- the sign-out itself still happens */
+        }
+        void supabase.auth.signOut()
+      }
+    }, 30_000)
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, markActive))
+      clearInterval(interval)
+    }
+  }, [hasSession])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
