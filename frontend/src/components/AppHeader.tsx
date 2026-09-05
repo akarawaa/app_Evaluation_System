@@ -42,6 +42,10 @@ const NAV_ITEMS: NavItem[] = [
   },
 ]
 
+// hr-portal launcher URL -- a small "← HR Suite" link above the brand.
+// Leave VITE_PORTAL_URL unset to hide it.
+const PORTAL_URL = (import.meta.env.VITE_PORTAL_URL as string | undefined)?.trim()
+
 export default function AppHeader({ title }: { title?: string }) {
   const { me, signOut } = useAuth()
   const { pathname } = useLocation()
@@ -50,7 +54,14 @@ export default function AppHeader({ title }: { title?: string }) {
     <header className="border-b border-line bg-surface px-4 py-3 font-sans sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 items-center gap-3">
-          <Link to="/" className="shrink-0 font-semibold text-ink hover:text-ink">E-Appraisal</Link>
+          <div>
+            {PORTAL_URL && (
+              <a href={PORTAL_URL} className="flex items-center gap-1 text-xs text-faint hover:text-primary">
+                <span aria-hidden="true">←</span> HR Suite
+              </a>
+            )}
+            <Link to="/" className="shrink-0 font-semibold text-ink hover:text-ink">E-Appraisal</Link>
+          </div>
           {title && <span className="shrink-0 text-faint">/</span>}
           {title && <span className="break-words text-sm text-muted">{title}</span>}
         </div>
